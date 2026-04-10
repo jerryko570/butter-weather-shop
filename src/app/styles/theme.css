@@ -1,0 +1,15 @@
+:root {
+  --color-butter: #F5C842;
+  --color-butter-light: #FDF3C0;
+  --color-butter-dark: #D4A800;
+  --color-sky: #A8D8EA;
+  --color-cloud: #F7F7F7;
+  --color-ink: #1A1A1A;
+  --color-ink-muted: #6B6B6B;
+  --color-ink-subtle: #C4C4C4;
+  --container-max: 1280px;
+  --header-height: 64px;
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+}
