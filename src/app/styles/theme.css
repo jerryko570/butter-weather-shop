@@ -1,14 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
 :root {
-  --color-butter: #F5C842;
-  --color-butter-light: #FDF3C0;
-  --color-butter-dark: #D4A800;
-  --color-sky: #A8D8EA;
-  --color-cloud: #F7F7F7;
-  --color-ink: #1A1A1A;
-  --color-ink-muted: #6B6B6B;
-  --color-ink-subtle: #C4C4C4;
-  --container-max: 1280px;
-  --header-height: 64px;
+  /* 브랜드 컬러 */
+  --color-butter: #f5c842;
+  --color-butter-light: #fdf3c0;
+  --color-butter-dark: #d4a800;
+
+  /* 기본 컬러 */
+  --color-ink: #111111;
+  --color-ink-muted: #555555;
+  --color-ink-subtle: #aaaaaa;
+  --color-border: #e5e5e5;
+  --color-bg: #ffffff;
+  --color-bg-soft: #f5f5f5;
+  --color-bg-warm: #f0ede8;
+
+  /* 폰트 */
+  --font-sans: 'DM Sans', sans-serif;
+  --font-serif: 'Libre Baskerville', serif;
+
+  /* 레이아웃 */
+  --header-height: 48px;
+  --container-max: 1440px;
+
+  /* 애니메이션 */
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 150ms;
   --duration-normal: 250ms;

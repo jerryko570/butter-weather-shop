@@ -1,13 +1,13 @@
-cat > pr.sh << 'EOF'
 #!/bin/bash
 
-# 사용법: ./pr.sh "제목" "라벨" "이슈내용" "PR내용"
-# 예시: ./pr.sh "GitHub 라벨 구성 추가" "⚙️Chore" "이슈 내용" "PR 내용"
+# 사용법: ./pr.sh <이슈번호> <PR번호> <제목> <라벨> <이슈내용> [PR내용-생략가능]
 
-TITLE=$1
-LABEL=$2
-ISSUE_BODY=${3:-"$TITLE"}
-PR_BODY=${4:-"$TITLE"}
+ISSUE_NUM=$1
+PR_NUM=$2
+TITLE=$3
+LABEL=$4
+ISSUE_BODY=${5:-"$TITLE"}
+PR_BODY=${6:-"$ISSUE_BODY"}
 BRANCH=$(git branch --show-current)
 
 echo "📋 이슈 생성 중..."
@@ -20,11 +20,12 @@ echo "🔀 PR 생성 중..."
 gh pr create \
   --title "$LABEL: $TITLE" \
   --assignee "@me" \
-  --body "$PR_BODY" \
   --base main \
-  --head "$BRANCH"
+  --head "$BRANCH" \
+  --body "## 작업 내용
+$PR_BODY
+
+## 관련 이슈
+close #$ISSUE_NUM"
 
 echo "✅ 완료!"
-EOF
-
-chmod +x pr.sh

@@ -1,12 +1,12 @@
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'done' | 'cancelled'
 export type PaymentMethod = 'toss' | 'stripe'
-export type Currency = 'KRW' | 'USD'
 
 export interface ShippingInfo {
   name: string
   phone: string
   address: string
   zipcode: string
+  memo?: string
 }
 
 export interface Order {
@@ -15,7 +15,6 @@ export interface Order {
   status: OrderStatus
   total_krw: number | null
   total_usd: number | null
-  currency: Currency
   payment_method: PaymentMethod | null
   payment_id: string | null
   shipping_info: ShippingInfo | null
