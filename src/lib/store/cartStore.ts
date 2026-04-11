@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export interface CartItem {
+interface CartItem {
   id: string
   slug: string
   name: string
@@ -34,35 +34,22 @@ export const useCartStore = create<CartStore>()(
         set((state) => {
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
-            return {
-              items: state.items.map((i) =>
-                i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-              ),
-            }
+            return { items: state.items.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i) }
           }
           return { items: [...state.items, { ...item, quantity: 1 }] }
         }),
-      removeItem: (id) =>
-        set((state) => ({
-          items: state.items.filter((i) => i.id !== id),
-        })),
+      removeItem: (id) => set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
       updateQuantity: (id, quantity) =>
         set((state) => ({
-          items:
-            quantity === 0
-              ? state.items.filter((i) => i.id !== id)
-              : state.items.map((i) => (i.id === id ? { ...i, quantity } : i)),
+          items: quantity === 0
+            ? state.items.filter((i) => i.id !== id)
+            : state.items.map((i) => (i.id === id ? { ...i, quantity } : i)),
         })),
       clearCart: () => set({ items: [] }),
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
-      totalKrw: () =>
-        get().items.reduce((sum, i) => sum + i.price_krw * i.quantity, 0),
-      totalUsd: () =>
-        get().items.reduce(
-          (sum, i) => sum + (i.price_usd ?? 0) * i.quantity,
-          0
-        ),
+      totalKrw: () => get().items.reduce((sum, i) => sum + i.price_krw * i.quantity, 0),
+      totalUsd: () => get().items.reduce((sum, i) => sum + (i.price_usd ?? 0) * i.quantity, 0),
       totalCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),
     { name: 'butter-weather-cart' }
