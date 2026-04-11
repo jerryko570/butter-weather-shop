@@ -8,7 +8,12 @@ export async function createPurchase(
   const { data, error } = await supabase
     .from('purchases')
     .insert({
-      ...input,
+      product_id: input.product_id,
+      product_name: input.product_name,
+      quantity: input.quantity,
+      price_krw: input.price_krw,
+      price_usd: input.price_usd,
+      total_price: input.price_krw,
       status: 'pending',
     })
     .select()
