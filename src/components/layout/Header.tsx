@@ -17,16 +17,15 @@ export function Header() {
   const { isMobileMenuOpen, openMobileMenu, closeMobileMenu } = useUiStore()
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-[#e5e5e5]">
-      <div className="flex items-center justify-between px-7 h-12">
-
+    <header className="sticky top-0 z-50 border-b border-[#e5e5e5] bg-white">
+      <div className="flex h-12 items-center justify-between px-7">
         {/* 왼쪽: 네비게이션 */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden items-center gap-6 md:flex">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.label}
               href={item.href}
-              className="text-[11px] tracking-widest uppercase text-[#555] hover:text-[#111] transition-colors"
+              className="text-[11px] tracking-widest text-[#555] uppercase transition-colors hover:text-[#111]"
             >
               {item.label}
             </Link>
@@ -36,28 +35,28 @@ export function Header() {
         {/* 가운데: 로고 */}
         <Link
           href="/"
-          className="absolute left-1/2 -translate-x-1/2 font-serif text-[14px] tracking-[0.12em] uppercase text-[#111]"
+          className="absolute left-1/2 -translate-x-1/2 font-serif text-[14px] tracking-[0.12em] text-[#111] uppercase"
         >
           Butter Weather
         </Link>
 
         {/* 오른쪽: 유틸리티 */}
-        <div className="flex items-center gap-5 ml-auto">
-          <button className="hidden md:block text-[11px] text-[#555] hover:text-[#111] transition-colors tracking-wide">
+        <div className="ml-auto flex items-center gap-5">
+          <button className="hidden text-[11px] tracking-wide text-[#555] transition-colors hover:text-[#111] md:block">
             Search
           </button>
-          <span className="hidden md:block text-[11px] text-[#555] tracking-wide cursor-pointer hover:text-[#111]">
+          <span className="hidden cursor-pointer text-[11px] tracking-wide text-[#555] hover:text-[#111] md:block">
             KR
           </span>
 
           {/* 장바구니 버튼 */}
           <button
             onClick={openCart}
-            className="flex items-center gap-1.5 text-[11px] text-[#555] hover:text-[#111] transition-colors tracking-wide"
+            className="flex items-center gap-1.5 text-[11px] tracking-wide text-[#555] transition-colors hover:text-[#111]"
           >
             Bag
             {totalCount > 0 && (
-              <span className="flex items-center justify-center w-4 h-4 bg-[#111] text-white text-[9px] rounded-full">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white">
                 {totalCount}
               </span>
             )}
@@ -65,7 +64,7 @@ export function Header() {
 
           {/* 모바일 햄버거 */}
           <button
-            className="md:hidden text-[#111]"
+            className="text-[#111] md:hidden"
             onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
           >
             {isMobileMenuOpen ? '✕' : '☰'}
@@ -75,13 +74,13 @@ export function Header() {
 
       {/* 모바일 메뉴 */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-[#e5e5e5] px-7 py-4 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 border-t border-[#e5e5e5] px-7 py-4 md:hidden">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.label}
               href={item.href}
               onClick={closeMobileMenu}
-              className="text-[12px] tracking-widest uppercase text-[#555] hover:text-[#111]"
+              className="text-[12px] tracking-widest text-[#555] uppercase hover:text-[#111]"
             >
               {item.label}
             </Link>

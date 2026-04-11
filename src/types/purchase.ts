@@ -14,4 +14,4 @@ export interface Purchase {
   created_at: string
 }
 
-export type CreatePurchaseInput = Omit<Purchase, 'id' | 'status' | 'created_at'>
+export type CreatePurchaseInput = Omit<Purchase, 'id' | 'status' | 'created_at' | 'buyer_name' | 'buyer_phone' | 'buyer_address'>

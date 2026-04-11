@@ -10,10 +10,7 @@ export async function POST(request: Request) {
       !body.product_id ||
       !body.product_name ||
       !body.quantity ||
-      !body.price_krw ||
-      !body.buyer_name ||
-      !body.buyer_phone ||
-      !body.buyer_address
+      !body.price_krw
     ) {
       return NextResponse.json(
         { error: '필수 항목을 모두 입력해주세요.' },
