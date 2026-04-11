@@ -39,4 +39,6 @@ ${CLICKUP_URL}
 - [ ] 불필요한 console.log 제거
 - [ ] 타입 에러 없음"
 
-gh pr create --title "${PR_TITLE}" --body "${PR_BODY}"
+GH_LABEL="${EMOJI}${LABEL}"
+
+gh pr create --title "${PR_TITLE}" --body "${PR_BODY}" --assignee "@me" --label "${GH_LABEL}"
