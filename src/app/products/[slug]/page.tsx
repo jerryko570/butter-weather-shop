@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import Image from 'next/image'
 import { useProduct } from '@/lib/queries/useProducts'
 import { usePurchase } from '@/hooks/usePurchase'
 import { formatKRW } from '@/lib/utils/formatPrice'
@@ -49,12 +50,13 @@ export default function ProductDetailPage() {
     <main className="mx-auto max-w-[var(--container-max)] px-4 py-12">
       <div className="grid gap-10 md:grid-cols-2">
         {/* 상품 이미지 */}
-        <div className="aspect-square overflow-hidden rounded-2xl bg-[var(--color-butter-light)]">
+        <div className="relative aspect-square overflow-hidden rounded-2xl bg-[var(--color-butter-light)]">
           {product.images[0] ? (
-            <img
+            <Image
               src={product.images[0]}
               alt={product.name}
-              className="h-full w-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-[var(--color-ink-subtle)]">
@@ -97,9 +99,7 @@ export default function ProductDetailPage() {
             <span className="w-8 text-center">{quantity}</span>
             <button
               type="button"
-              onClick={() =>
-                setQuantity((q) => Math.min(product.stock, q + 1))
-              }
+              onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
               className="flex h-8 w-8 items-center justify-center rounded-md border text-lg"
             >
               +
@@ -140,10 +140,7 @@ export default function ProductDetailPage() {
             type="button"
             onClick={handlePurchase}
             disabled={
-              purchase.isPending ||
-              !buyerName ||
-              !buyerPhone ||
-              !buyerAddress
+              purchase.isPending || !buyerName || !buyerPhone || !buyerAddress
             }
             className="rounded-xl bg-[var(--color-butter)] px-6 py-3 text-lg font-bold text-[var(--color-ink)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--color-butter-dark)] disabled:cursor-not-allowed disabled:opacity-50"
           >

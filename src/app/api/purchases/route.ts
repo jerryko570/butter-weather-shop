@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: '필수 항목을 모두 입력해주세요.' },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     console.error('Purchase creation failed:', error)
     return NextResponse.json(
       { error: '주문 처리 중 오류가 발생했습니다.' },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }

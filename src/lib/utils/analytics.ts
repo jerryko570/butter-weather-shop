@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/client'
 
-type EventName = 'product_view' | 'add_to_cart' | 'remove_from_cart' | 'checkout_start' | 'purchase' | 'page_view'
+type EventName =
+  | 'product_view'
+  | 'add_to_cart'
+  | 'remove_from_cart'
+  | 'checkout_start'
+  | 'purchase'
+  | 'page_view'
 
 interface EventProperties {
   product_id?: string
@@ -22,11 +28,16 @@ function getOrCreateSessionId(): string {
   return sessionId
 }
 
-export const trackEvent = async (eventName: EventName, properties: EventProperties = {}) => {
+export const trackEvent = async (
+  eventName: EventName,
+  properties: EventProperties = {}
+) => {
   try {
     const supabase = createClient()
     const sessionId = getOrCreateSessionId()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     await supabase.from('analytics_events').insert({
       event_name: eventName,
       properties,
