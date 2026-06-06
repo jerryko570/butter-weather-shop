@@ -62,3 +62,37 @@ export function isPaymentValid(
 ): boolean {
   return payment.status === 'PAID' && payment.amount.total === expectedAmount
 }
+
+/**
+ PortOne에 결제 취소(환불)를 요청한다.
+ - paymentId로 해당 결제를 통째로 취소한다. (전액 취소)
+ - reason: 취소 사유 (PortOne 내역에 기록됨)
+ - 이것도 API Secret을 쓰므로 반드시 서버에서만 호출.
+*/
+export async function cancelPortOnePayment(
+  paymentId: string,
+  reason: string
+): Promise<void> {
+  if (!PORTONE_API_SECRET) {
+    throw new Error('PORTONE_API_SECRET이 설정되지 않았습니다. (.env.local 확인)')
+  }
+
+  const res = await fetch(
+    `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `PortOne ${PORTONE_API_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      // reason은 PortOne 취소 API의 필수 항목
+      body: JSON.stringify({ reason }),
+    }
+  )
+
+  if (!res.ok) {
+    // PortOne이 돌려준 에러 메시지를 최대한 살려서 던진다
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.message ?? '결제 취소에 실패했습니다.')
+  }
+}

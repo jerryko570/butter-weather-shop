@@ -65,3 +65,17 @@ export async function markPurchasePaid(paymentId: string): Promise<void> {
 
   if (error) throw error
 }
+
+/**
+ 결제가 취소된 주문을 'cancelled'(취소)로 바꾼다.
+ - 반드시 서버에서 PortOne 취소가 성공한 뒤에만 호출할 것.
+*/
+export async function markPurchaseCancelled(paymentId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('purchases')
+    .update({ status: 'cancelled' })
+    .eq('payment_id', paymentId)
+
+  if (error) throw error
+}

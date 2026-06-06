@@ -40,6 +40,13 @@ async function payWithPortOne(purchase: Purchase) {
     totalAmount: purchase.price_krw, // 결제 금액 (원)
     currency: 'CURRENCY_KRW',
     payMethod: 'CARD', // 우선 카드. 나중에 KAKAOPAY/Alipay 등으로 확장 가능
+    // 구매자 정보. 이니시스 V2는 email이 필수.
+    // ⚠️ 지금은 테스트용 고정값. 실제 서비스에선 주문 폼에서 입력받아 넣어야 함.
+    customer: {
+      fullName: '테스트 구매자',
+      email: 'test@example.com',
+      phoneNumber: '010-0000-0000',
+    },
   })
 
   // response.code가 있으면 = 결제 실패 또는 사용자가 취소함
@@ -65,5 +72,30 @@ async function payWithPortOne(purchase: Purchase) {
 export const usePayment = () => {
   return useMutation({
     mutationFn: payWithPortOne,
+  })
+}
+
+/**
+ 결제 취소를 서버에 요청하는 함수.
+ - paymentId를 /api/payments/cancel 로 보내면, 서버가 PortOne 취소 + DB cancelled 처리를 한다.
+*/
+async function cancelPaymentRequest(paymentId: string) {
+  const res = await fetch('/api/payments/cancel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentId, reason: '고객 요청' }),
+  })
+
+  if (!res.ok) {
+    const { error } = await res.json()
+    throw new Error(error ?? '결제 취소에 실패했습니다.')
+  }
+
+  return res.json()
+}
+
+export const useCancelPayment = () => {
+  return useMutation({
+    mutationFn: cancelPaymentRequest,
   })
 }

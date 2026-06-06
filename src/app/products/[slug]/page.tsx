@@ -30,8 +30,9 @@ import { useProduct } from '@/lib/queries/useProducts'
 import { usePurchase } from '@/hooks/usePurchase'
 // 주문 로직을 담당하는 도구 (데이터를 바꾸는 도구, 서버에 뭔가를 등록/변경 -> 쓰기 전용)
 // 함수 결과값이 아닌 함수 자체를 임포트함
-import { usePayment } from '@/hooks/usePayment'
+import { usePayment, useCancelPayment } from '@/hooks/usePayment'
 // 결제창을 띄우고 결제 결과를 서버에 검증시키는 도구 (주문 생성 다음에 이어서 돈다)
+// useCancelPayment: 결제를 취소(환불)하는 도구
 import { formatKRW } from '@/lib/utils/formatPrice'
 // 가격을 예쁘게 바꿔주는 도구
 import { useState } from 'react'
@@ -52,7 +53,9 @@ export default function ProductDetailPage() {
   // 그 도구는 Tansktack을 쓰고 결과 꾸러미에서 상품 데이터, 로딩중, 에러를 꺼냄
   const purchase = usePurchase()
   const payment = usePayment()
+  const cancel = useCancelPayment()
   // payment: 결제창 + 서버검증 도구. purchase(주문생성) 다음 단계에서 사용한다.
+  // cancel: 완료된 결제를 취소하는 도구
   // 페이지 들어오면 바로 실행 (v8 엔진이 usePurchase 내용을 돌림 )
   // 주문 도구를 purchase 변수에 담아둠
   // usePurchase()를 실행한 결과(꾸러미)를 저장
@@ -62,6 +65,10 @@ export default function ProductDetailPage() {
 
   const [quantity, setQuantity] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
+  // 방금 결제완료된 주문의 결제번호 (취소할 때 PortOne에 넘길 값)
+  const [paidPaymentId, setPaidPaymentId] = useState<string | null>(null)
+  // 취소까지 끝났는지 (팝업 내용을 "취소 완료"로 바꾸는 스위치)
+  const [showCancelled, setShowCancelled] = useState(false)
 
   if (isLoading) {
     return (
@@ -113,6 +120,7 @@ export default function ProductDetailPage() {
           payment.mutate(createdPurchase, {
             onSuccess: () => {
               // 결제 + 서버검증까지 모두 성공 -> 그제서야 "주문완료" 팝업
+              setPaidPaymentId(createdPurchase.payment_id) // 취소에 쓸 결제번호 저장
               setShowSuccess(true)
             },
           })
@@ -126,6 +134,17 @@ export default function ProductDetailPage() {
     router.push('/')
   }
   // 주문 사이클의 마무리 역할
+
+  // 결제 취소: 방금 결제한 건의 payment_id를 서버로 보내 취소시킨다.
+  const handleCancel = () => {
+    if (!paidPaymentId) return
+    cancel.mutate(paidPaymentId, {
+      onSuccess: () => {
+        // PortOne 취소 + DB cancelled 처리 성공 -> 팝업 내용을 "취소 완료"로 전환
+        setShowCancelled(true)
+      },
+    })
+  }
 
   return (
     <div>
@@ -259,7 +278,7 @@ export default function ProductDetailPage() {
               as="h2"
               className="mb-2 font-serif text-[22px] font-normal text-[#111]"
             >
-              주문 완료
+              {showCancelled ? '결제 취소 완료' : '주문 완료'}
             </Text>
             <Text as="p" className="mb-1 text-[13px] text-[#777]">
               {product.name} × {quantity}
@@ -271,17 +290,47 @@ export default function ProductDetailPage() {
               as="p"
               className="mb-8 text-[12px] leading-relaxed text-[#aaa]"
             >
-              주문이 정상적으로 접수되었습니다.
-              <br />
-              감사합니다!
+              {showCancelled
+                ? '결제가 취소되었습니다.'
+                : '주문이 정상적으로 접수되었습니다. 감사합니다!'}
             </Text>
-            <button
-              type="button"
-              onClick={handleCloseSuccess}
-              className="w-full bg-[#111] py-3 text-[11px] tracking-widest text-white uppercase transition-colors hover:bg-[#333]"
-            >
-              확인
-            </button>
+
+            {/* 취소 실패 메시지 */}
+            {cancel.isError && (
+              <Text as="caption" className="mb-3 block text-[12px] text-red-500">
+                {cancel.error.message}
+              </Text>
+            )}
+
+            {showCancelled ? (
+              // 취소까지 끝난 경우: 확인 버튼만
+              <button
+                type="button"
+                onClick={handleCloseSuccess}
+                className="w-full bg-[#111] py-3 text-[11px] tracking-widest text-white uppercase transition-colors hover:bg-[#333]"
+              >
+                확인
+              </button>
+            ) : (
+              // 결제완료 상태: 확인 + 결제 취소 버튼
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseSuccess}
+                  className="w-full bg-[#111] py-3 text-[11px] tracking-widest text-white uppercase transition-colors hover:bg-[#333]"
+                >
+                  확인
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancel.isPending}
+                  className="w-full border border-[#ddd] py-3 text-[11px] tracking-widest text-[#777] uppercase transition-colors hover:border-[#111] hover:text-[#111] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {cancel.isPending ? '취소 처리 중...' : '결제 취소'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
