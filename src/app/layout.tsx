@@ -1,6 +1,4 @@
 import type { Metadata } from 'next'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
 import { QueryProvider } from '@/components/layout/QueryProvider'
 import './globals.css'
 import './styles/theme.css'
@@ -25,11 +23,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <QueryProvider>
-          <Header />
-          <main>{children}</main>
-          <Footer />
-        </QueryProvider>
+        {/* QueryProvider는 손님·어드민 공통이라 루트에 둔다.
+            쇼핑몰 헤더·푸터는 (shop)/layout.tsx 로 옮겨, 어드민엔 안 붙는다. */}
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   )
