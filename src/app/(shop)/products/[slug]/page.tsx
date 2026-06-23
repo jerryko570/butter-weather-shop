@@ -1,10 +1,13 @@
 /**
- * ProductDetailPage — 상품 상세 화면
+ * ProductDetailPage — 상품 상세 화면 (nutats 레퍼런스 레이아웃)
  *
  * 1. 재료 준비  : 훅 실행해서 변수에 담기 (slug · router · 상품데이터 · 주문도구 · 상태값)
  * 2. 관문       : 로딩/에러 거르기 → 통과하면 product가 확실히 존재한다
  * 3. 동작 정의  : 클릭 시 발동할 함수 미리 만들기 (주문 전송 / 팝업 닫기)
- * 4. 화면 그리기: 이미지 · 정보 · 수량 · 주문버튼 · 성공팝업
+ * 4. 화면 그리기:
+ *      상단 2단  → 좌: 메인이미지 + 썸네일 갤러리 / 우: 정보블록(이름·가격·수량·주문)
+ *      하단 탭   → DETAIL(상세이미지) · SHIPPING(배송·교환반품 안내)
+ *      성공 팝업
  */
 
 'use client'
@@ -17,19 +20,24 @@ import { usePurchase } from '@/hooks/usePurchase' // 주문 전송 (쓰기 전�
 import { formatKRW } from '@/lib/utils/formatPrice' // 가격 포맷팅
 import { useState } from 'react'
 import Text from '@/components/ui/Text/Text' // 공통 타이포 컴포넌트 (as로 태그+스타일 결정)
+import { useT } from '@/hooks/useT'
+import { localizedName, localizedDescription } from '@/lib/i18n/dictionary'
+
+type Tab = 'detail' | 'shipping'
 
 export default function ProductDetailPage() {
   // 1. 재료 준비
   const { slug } = useParams<{ slug: string }>() // 주소에서 어떤 상품인지(slug) 꺼내기
   const router = useRouter() // router.push('/')로 페이지 이동
+  const { locale } = useT() // 현재 언어 (상품명·설명 현지화)
   const { data: product, isLoading, error } = useProduct(slug) // slug로 상품 조회 (useQuery 꾸러미)
-  // useProduct(slug)가 실행되는 순간 알아서 패칭이 시작됨 (호출!)
 
   const purchase = usePurchase() // 주문 도구 꾸러미. ()로 "실행한 결과"를 담는다 (함수 자체 X)
-  // purchase 안에 mutate · isPending · isError · error 가 형제로 들어있음
 
   const [quantity, setQuantity] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(0) // 갤러리에서 보고 있는 이미지 인덱스
+  const [activeTab, setActiveTab] = useState<Tab>('detail') // 하단 탭
 
   // 2. 관문 — 여기서 거르면 아래부터는 product가 있다는 게 보장됨
   if (isLoading) {
@@ -56,18 +64,13 @@ export default function ProductDetailPage() {
   // 주문 버튼 클릭 → mutate로 서버에 주문 전송
   const handlePurchase = () => {
     purchase.mutate(
-      // 1번 인자: 서버로 보낼 주문 데이터
-      // product(DB값)에서 필요한 것만 뽑고, 수량/가격을 계산해 새로 만든 값
       {
         product_id: product.id,
         product_name: product.name,
-        quantity, // 사용자가 고른 수량
-        price_krw: product.price_krw * quantity, // 수량만큼 곱한 최종 가격
+        quantity,
+        price_krw: product.price_krw * quantity,
         price_usd: product.price_usd ? product.price_usd * quantity : null,
       },
-      // 2번 인자: 결과 처리 콜백 (서버로 안 가고 브라우저에서 실행)
-      // postPurchase가 throw 없이 return하면 돌려줌
-      // 함수가 일을 끝내고 return으로 결과를 밖으로 내보내는걸 돌려준다고 함
       {
         onSuccess: () => {
           setShowSuccess(true)
@@ -75,7 +78,6 @@ export default function ProductDetailPage() {
       }
     )
   }
-  // mutate는 인자를 2개 받는다. 데이터: postPurchase의 input으로 / 옵션: (성공과 실패 시 할일)
 
   // 성공 팝업 닫고 홈으로 → 주문 사이클 마무리
   const handleCloseSuccess = () => {
@@ -83,23 +85,59 @@ export default function ProductDetailPage() {
     router.push('/')
   }
 
+  const images = product.images?.length ? product.images : []
+  const isSoldOut = product.status === 'sold_out' || product.stock <= 0
+
   // 4. 화면 그리기
   return (
     <div>
+      {/* ── 상단 2단: 좌 갤러리 / 우 정보블록 ── */}
       <div className="grid grid-cols-1 border-b border-[#e5e5e5] md:grid-cols-2">
-        <div className="relative flex aspect-square items-center justify-center border-b border-[#e5e5e5] bg-[#f5f5f5] md:border-r md:border-b-0">
-          {product.images[0] ? (
-            <Image
-              src={product.images[0]}
-              alt={product.name}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="h-32 w-32 rounded-full bg-[#e0dbd2]" />
+        {/* 좌: 메인 이미지 + 썸네일 갤러리 */}
+        <div className="border-b border-[#e5e5e5] md:border-r md:border-b-0">
+          <div className="relative flex aspect-square items-center justify-center bg-[#f5f5f5]">
+            {images[selectedImage] ? (
+              <Image
+                src={images[selectedImage]}
+                alt={product.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="h-32 w-32 rounded-full bg-[#e0dbd2]" />
+            )}
+          </div>
+
+          {/* 썸네일 — 이미지가 2장 이상일 때만 */}
+          {images.length > 1 && (
+            <div className="flex flex-wrap gap-2 border-t border-[#e5e5e5] p-4">
+              {images.map((src, i) => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSelectedImage(i)}
+                  className={`relative h-16 w-16 overflow-hidden bg-[#f5f5f5] transition-opacity ${
+                    i === selectedImage
+                      ? 'ring-1 ring-[#111]'
+                      : 'opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <Image
+                    src={src}
+                    alt={`${product.name} ${i + 1}`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
+        {/* 우: 정보블록 */}
         <div className="flex flex-col justify-between p-8 md:p-12">
           <div className="flex flex-col gap-6">
             <div>
@@ -109,16 +147,22 @@ export default function ProductDetailPage() {
               >
                 {product.category ?? 'Butter Weather'}
               </Text>
-              {/* 제품 이름 */}
+              {/* 제품 이름 — 현재 언어 우선 */}
               <Text
                 as="h1"
                 className="text-[32px] leading-tight font-normal text-[#111]"
               >
-                {product.name}
+                {localizedName(product, locale)}
               </Text>
-              {product.name_en && (
+              {/* 보조 이름 — 한국어 화면일 땐 영문을, 영문 화면일 땐 국문을 부제로 */}
+              {locale === 'ko' && product.name_en && (
                 <Text as="p" className="mt-1 text-[13px] text-[#aaa]">
                   {product.name_en}
+                </Text>
+              )}
+              {locale === 'en' && (
+                <Text as="p" className="mt-1 text-[13px] text-[#aaa]">
+                  {product.name}
                 </Text>
               )}
             </div>
@@ -128,15 +172,17 @@ export default function ProductDetailPage() {
               {formatKRW(product.price_krw)}
             </Text>
 
-            {/* 제품 상세 */}
-            {product.description && (
+            {/* 제품 상세 — 현재 언어 우선 */}
+            {localizedDescription(product, locale) && (
               <Text
                 as="p"
-                className="text-[13px] leading-relaxed font-light text-[#777]"
+                className="text-[13px] leading-relaxed font-light whitespace-pre-line text-[#777]"
               >
-                {product.description}
+                {localizedDescription(product, locale)}
               </Text>
             )}
+
+            <div className="border-t border-[#e5e5e5]" />
 
             {/* 수량 선택 */}
             <div className="flex items-center gap-3">
@@ -167,22 +213,32 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            <div className="border-t border-[#e5e5e5]" />
+            {/* 합계 */}
+            <div className="flex items-baseline justify-between border-t border-[#e5e5e5] pt-4">
+              <span className="text-[11px] tracking-widest text-[#aaa] uppercase">
+                Total
+              </span>
+              <Text as="p" className="text-[20px] font-medium text-[#111]">
+                {formatKRW(product.price_krw * quantity)}
+              </Text>
+            </div>
           </div>
 
           {/* 주문 버튼 + 에러 메시지 */}
           <div className="mt-8 flex flex-col gap-3">
-            {/* 요청 중(isPending)엔 버튼 잠그고 "주문 처리 중..." 표시 → 연타 방지 */}
             <button
               type="button"
               onClick={handlePurchase}
-              disabled={purchase.isPending}
+              disabled={purchase.isPending || isSoldOut}
               className="w-full bg-[#111] py-3.5 text-[11px] tracking-widest text-white uppercase transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {purchase.isPending ? '주문 처리 중...' : '바로 주문'}
+              {isSoldOut
+                ? 'Sold Out'
+                : purchase.isPending
+                  ? '주문 처리 중...'
+                  : 'Buy It Now'}
             </button>
 
-            {/* 실패하면 isError=true → 에러 메시지 노출 */}
             {purchase.isError && (
               <Text as="caption" className="text-[12px] text-red-500">
                 {purchase.error.message}
@@ -192,33 +248,94 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* 상세 정보 — 상세 이미지를 세로로 길게 쌓아 보여줌 */}
-      {product.detail_images && product.detail_images.length > 0 && (
-        <section className="mx-auto max-w-3xl px-4 py-12 md:py-20">
-          <Text
-            as="caption"
-            className="mb-8 block text-center text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
-          >
-            Product Detail
-          </Text>
-          <div className="flex flex-col items-center gap-4">
-            {product.detail_images.map((src, i) => (
-              <Image
-                key={src}
-                src={src}
-                alt={`${product.name} 상세 이미지 ${i + 1}`}
-                width={768}
-                height={1024}
-                className="h-auto w-full"
+      {/* ── 하단 탭 섹션: DETAIL / SHIPPING ── */}
+      <div>
+        {/* 탭 네비 */}
+        <div className="flex items-center justify-center gap-10 border-b border-[#e5e5e5]">
+          {(
+            [
+              { key: 'detail', label: 'Detail' },
+              { key: 'shipping', label: 'Shipping & Returns' },
+            ] as { key: Tab; label: string }[]
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`-mb-px border-b py-5 text-[11px] tracking-widest uppercase transition-colors ${
+                activeTab === tab.key
+                  ? 'border-[#111] text-[#111]'
+                  : 'border-transparent text-[#aaa] hover:text-[#111]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 탭 내용 */}
+        <div className="mx-auto max-w-3xl px-4 py-12 md:py-20">
+          {activeTab === 'detail' && (
+            <>
+              {product.detail_images && product.detail_images.length > 0 ? (
+                <div className="flex flex-col items-center gap-4">
+                  {product.detail_images.map((src, i) => (
+                    <Image
+                      key={src}
+                      src={src}
+                      alt={`${product.name} 상세 이미지 ${i + 1}`}
+                      width={768}
+                      height={1024}
+                      sizes="(max-width: 768px) 100vw, 768px"
+                      className="h-auto w-full"
+                    />
+                  ))}
+                </div>
+              ) : localizedDescription(product, locale) ? (
+                <Text
+                  as="p"
+                  className="text-center text-[14px] leading-relaxed whitespace-pre-line text-[#777]"
+                >
+                  {localizedDescription(product, locale)}
+                </Text>
+              ) : (
+                <Text as="p" className="text-center text-[13px] text-[#bbb]">
+                  상세 정보가 준비 중입니다.
+                </Text>
+              )}
+            </>
+          )}
+
+          {activeTab === 'shipping' && (
+            <div className="space-y-8">
+              <ShippingBlock
+                title="배송 안내"
+                rows={[
+                  ['배송 방법', '택배'],
+                  ['배송비', '3,000원 (50,000원 이상 무료)'],
+                  ['배송 기간', '결제 확인 후 2~5일 이내 출고'],
+                ]}
               />
-            ))}
-          </div>
-        </section>
-      )}
+              <ShippingBlock
+                title="교환 · 반품 안내"
+                rows={[
+                  ['신청 기간', '상품 수령 후 7일 이내'],
+                  ['반품 배송비', '단순 변심 시 왕복 배송비 고객 부담'],
+                  ['불가 사유', '착용·사용 흔적이 있거나 포장이 훼손된 경우'],
+                ]}
+              />
+              <Text as="p" className="text-[12px] leading-relaxed text-[#aaa]">
+                핸드메이드 특성상 색상·크기에 미세한 차이가 있을 수 있으며, 이는
+                교환·반품 사유에 해당하지 않습니다.
+              </Text>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* 주문 성공 팝업 */}
       {showSuccess && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40">
           <div className="mx-4 w-full max-w-sm bg-white p-10 text-center">
             <div className="mb-6 flex justify-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f0ede8]">
@@ -266,6 +383,34 @@ export default function ProductDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── 배송/교환 안내 블록 (라벨-값 행 묶음) ──
+function ShippingBlock({
+  title,
+  rows,
+}: {
+  title: string
+  rows: [string, string][]
+}) {
+  return (
+    <div>
+      <Text
+        as="caption"
+        className="mb-4 block text-[11px] tracking-widest text-[#111] uppercase"
+      >
+        {title}
+      </Text>
+      <dl className="divide-y divide-[#f0f0f0] border-t border-[#e5e5e5]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex gap-4 py-3">
+            <dt className="w-24 shrink-0 text-[12px] text-[#aaa]">{label}</dt>
+            <dd className="text-[12px] leading-relaxed text-[#555]">{value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }
