@@ -1,90 +1,123 @@
 'use client'
 
+// 모바일(<md) 상단바 — nutats 모바일 레퍼런스.
+// 상단: 로고 + Bag + 햄버거 / 그 아래: 가로 카테고리 줄.
+// 햄버거 = About·언어·소셜 전체 메뉴 패널.
+// 데스크톱(md+)에서는 숨고 Sidebar가 대신 뜬다.
+
 import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
 import { useUiStore } from '@/store/uiStore'
+import { useT } from '@/hooks/useT'
+import type { TranslationKey } from '@/lib/i18n/dictionary'
 
-// 네비게이션 메뉴 목록
-const NAV_ITEMS = [
-  { label: 'New', href: '/products?sort=newest' },
-  { label: 'Keyring', href: '/products?category=keyring' },
-  { label: 'Bead', href: '/products?category=bead' },
-  { label: 'All', href: '/products' },
+const SHOP_CATEGORIES: { key: TranslationKey; href: string }[] = [
+  { key: 'nav.all', href: '/products' },
+  { key: 'nav.keyring', href: '/products?category=keyring' },
+  { key: 'nav.bead', href: '/products?category=bead' },
+  { key: 'nav.etc', href: '/products?category=etc' },
+]
+
+const SOCIAL = [
+  { label: 'Instagram', href: 'https://instagram.com' },
+  { label: 'Contact', href: 'mailto:email.narae@gmail.com' },
 ]
 
 export function Header() {
   const { totalCount, openCart } = useCart()
   const { isMobileMenuOpen, openMobileMenu, closeMobileMenu } = useUiStore()
+  const { t, locale, setLocale } = useT()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#e5e5e5] bg-white">
-      <div className="flex h-12 items-center justify-between px-7">
-        {/* 왼쪽: 네비게이션 */}
-        <nav className="hidden items-center gap-6 md:flex">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="text-[11px] tracking-widest text-[#555] uppercase transition-colors hover:text-[#111]"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* 가운데: 로고 */}
+    <header className="sticky top-0 z-50 border-b border-[#e5e5e5] bg-white md:hidden">
+      {/* 상단: 로고 + Bag + 햄버거 */}
+      <div className="flex h-12 items-center justify-between px-5">
         <Link
           href="/"
-          className="absolute left-1/2 -translate-x-1/2 font-serif text-[14px] tracking-[0.12em] text-[#111] uppercase"
+          className="font-serif text-[14px] tracking-[0.12em] text-[#111] uppercase"
         >
           Butter Weather
         </Link>
-
-        {/* 오른쪽: 유틸리티 */}
-        <div className="ml-auto flex items-center gap-5">
-          <button className="hidden text-[11px] tracking-wide text-[#555] transition-colors hover:text-[#111] md:block">
-            Search
-          </button>
-          <span className="hidden cursor-pointer text-[11px] tracking-wide text-[#555] hover:text-[#111] md:block">
-            KR
-          </span>
-
-          {/* 장바구니 버튼 */}
+        <div className="flex items-center gap-4">
           <button
             onClick={openCart}
-            className="flex items-center gap-1.5 text-[11px] tracking-wide text-[#555] transition-colors hover:text-[#111]"
+            className="flex items-center gap-1.5 text-[11px] tracking-wide text-[#555] uppercase"
           >
-            Bag
+            {t('nav.bag')}
             {totalCount > 0 && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white">
                 {totalCount}
               </span>
             )}
           </button>
-
-          {/* 모바일 햄버거 */}
           <button
-            className="text-[#111] md:hidden"
+            className="text-[16px] text-[#111]"
             onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
+            aria-label="Menu"
           >
             {isMobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
       </div>
 
-      {/* 모바일 메뉴 */}
+      {/* 가로 카테고리 줄 */}
+      <div className="flex items-center gap-5 overflow-x-auto border-t border-[#e5e5e5] px-5 py-2.5">
+        {SHOP_CATEGORIES.map((cat) => (
+          <Link
+            key={cat.key}
+            href={cat.href}
+            className="text-[11px] tracking-widest whitespace-nowrap text-[#555] uppercase transition-colors hover:text-[#111]"
+          >
+            {t(cat.key)}
+          </Link>
+        ))}
+      </div>
+
+      {/* 햄버거 패널 — About·언어·소셜 */}
       {isMobileMenuOpen && (
-        <div className="flex flex-col gap-4 border-t border-[#e5e5e5] px-7 py-4 md:hidden">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={closeMobileMenu}
-              className="text-[12px] tracking-widest text-[#555] uppercase hover:text-[#111]"
+        <div className="flex flex-col gap-5 border-t border-[#e5e5e5] px-5 py-5">
+          <Link
+            href="/about"
+            onClick={closeMobileMenu}
+            className="text-[13px] tracking-widest text-[#555] uppercase hover:text-[#111]"
+          >
+            {t('nav.about')}
+          </Link>
+
+          {/* 언어 토글 */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] tracking-[0.14em] text-[#aaa] uppercase">
+              Language
+            </span>
+            <button
+              onClick={() => setLocale('ko')}
+              className={`text-[12px] ${locale === 'ko' ? 'text-[#111]' : 'text-[#bbb]'}`}
             >
-              {item.label}
-            </Link>
-          ))}
+              KR
+            </button>
+            <span className="text-[#ddd]">·</span>
+            <button
+              onClick={() => setLocale('en')}
+              className={`text-[12px] ${locale === 'en' ? 'text-[#111]' : 'text-[#bbb]'}`}
+            >
+              EN
+            </button>
+          </div>
+
+          {/* 소셜 */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[#f0f0f0] pt-4">
+            {SOCIAL.map((s) => (
+              <a
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-[#aaa] hover:text-[#111]"
+              >
+                {s.label}
+              </a>
+            ))}
+          </div>
         </div>
       )}
     </header>

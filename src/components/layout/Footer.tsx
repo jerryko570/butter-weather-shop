@@ -1,46 +1,62 @@
-import Link from 'next/link'
+'use client'
 
-const FOOTER_LINKS = {
-  Shop: [
-    { label: 'New Arrivals', href: '/products?sort=newest' },
-    { label: 'Keyring', href: '/products?category=keyring' },
-    { label: 'Bead', href: '/products?category=bead' },
-    { label: 'All Products', href: '/products' },
-  ],
-  Order: [
-    { label: 'Shipping Info', href: '/info/shipping' },
-    { label: 'Returns', href: '/info/returns' },
-    { label: 'FAQ', href: '/info/faq' },
-  ],
-  Brand: [
-    { label: 'About', href: '/about' },
-    { label: 'Instagram', href: 'https://instagram.com' },
-    { label: 'Smartstore', href: 'https://smartstore.naver.com/butterweather' },
-    { label: 'Contact', href: 'mailto:email.narae@gmail.com' },
-  ],
-}
+import Link from 'next/link'
+import { useT } from '@/hooks/useT'
+import type { TranslationKey } from '@/lib/i18n/dictionary'
+
+const FOOTER_LINKS: {
+  title: TranslationKey
+  links: { label: TranslationKey; href: string }[]
+}[] = [
+  {
+    title: 'footer.shop',
+    links: [
+      { label: 'footer.newArrivals', href: '/products?sort=newest' },
+      { label: 'nav.keyring', href: '/products?category=keyring' },
+      { label: 'nav.bead', href: '/products?category=bead' },
+      { label: 'footer.allProducts', href: '/products' },
+    ],
+  },
+  {
+    title: 'footer.order',
+    links: [
+      { label: 'footer.shippingInfo', href: '/info/shipping' },
+      { label: 'footer.returns', href: '/info/returns' },
+      { label: 'footer.faq', href: '/info/faq' },
+    ],
+  },
+  {
+    title: 'footer.brand',
+    links: [
+      { label: 'footer.about', href: '/about' },
+      { label: 'footer.contact', href: 'mailto:email.narae@gmail.com' },
+    ],
+  },
+]
 
 export function Footer() {
+  const { t, locale, setLocale } = useT()
+
   return (
     <footer>
       {/* 링크 그리드 */}
       <div className="grid grid-cols-3 border-t border-[#e5e5e5]">
-        {Object.entries(FOOTER_LINKS).map(([title, links]) => (
+        {FOOTER_LINKS.map((col) => (
           <div
-            key={title}
+            key={col.title}
             className="border-r border-[#e5e5e5] p-7 last:border-r-0"
           >
             <p className="mb-4 text-[10px] tracking-[0.1em] text-[#aaa] uppercase">
-              {title}
+              {t(col.title)}
             </p>
             <ul className="flex flex-col gap-2">
-              {links.map((link) => (
+              {col.links.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
                     className="text-[12px] text-[#555] transition-colors hover:text-[#111]"
                   >
-                    {link.label}
+                    {t(link.label)}
                   </Link>
                 </li>
               ))}
@@ -49,16 +65,22 @@ export function Footer() {
         ))}
       </div>
 
-      {/* 카피라이트 */}
+      {/* 카피라이트 + 언어 토글 */}
       <div className="flex items-center justify-between border-t border-[#e5e5e5] px-7 py-4">
-        <p className="text-[11px] text-[#bbb]">
-          © 2026 Butter Weather. All rights reserved.
-        </p>
+        <p className="text-[11px] text-[#bbb]">{t('footer.rights')}</p>
         <div className="flex items-center gap-4">
-          <span className="cursor-pointer text-[11px] text-[#111]">KR</span>
-          <span className="cursor-pointer text-[11px] text-[#bbb] hover:text-[#111]">
+          <button
+            onClick={() => setLocale('ko')}
+            className={`text-[11px] ${locale === 'ko' ? 'text-[#111]' : 'text-[#bbb] hover:text-[#111]'}`}
+          >
+            KR
+          </button>
+          <button
+            onClick={() => setLocale('en')}
+            className={`text-[11px] ${locale === 'en' ? 'text-[#111]' : 'text-[#bbb] hover:text-[#111]'}`}
+          >
             EN
-          </span>
+          </button>
         </div>
       </div>
     </footer>

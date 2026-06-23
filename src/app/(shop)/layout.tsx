@@ -1,18 +1,27 @@
 import { Header } from '@/components/layout/Header'
+import { Sidebar } from '@/components/layout/Sidebar'
 import { Footer } from '@/components/layout/Footer'
 
-// 손님용 쇼핑몰 레이아웃 — 헤더·푸터는 여기에만 붙는다.
-// 어드민(/admin)은 이 그룹 밖이라 쇼핑몰 헤더가 보이지 않는다.
+// 손님용 쇼핑몰 레이아웃 (nutats 구조) —
+// 데스크톱: 좌측 세로 사이드바 + 우측 콘텐츠
+// 모바일: 상단바(Header) + 콘텐츠
+// 어드민(/admin)은 이 그룹 밖이라 이 네비가 안 붙는다.
 export default function ShopLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <>
-      <Header />
-      <main>{children}</main>
-      <Footer />
-    </>
+    <div className="md:flex md:min-h-screen">
+      {/* 데스크톱 좌측 사이드바 */}
+      <Sidebar />
+
+      {/* 모바일 상단바 + 콘텐츠 + 푸터 */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    </div>
   )
 }
