@@ -7,6 +7,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // Supabase Storage의 이미지를 next/image로 띄우려면 호스트를 허용해야 한다.
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'ljjpgsmufioeixspkrpw.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 }
 
 export default nextConfig

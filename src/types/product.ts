@@ -9,7 +9,8 @@ export interface Product {
   price_krw: number
   price_usd: number | null
   stock: number
-  images: string[]
+  images: string[] // 대표/갤러리 이미지 (썸네일·상단 큰 이미지)
+  detail_images: string[] // 상세페이지 설명 이미지 (세로로 길게 쌓이는 스마트스토어식)
   category: string | null
   tags: string[]
   status: ProductStatus // 판매 상태 (active / sold_out 등) — 공개 여부와는 별개

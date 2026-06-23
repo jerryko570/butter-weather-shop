@@ -192,6 +192,30 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
+      {/* 상세 정보 — 상세 이미지를 세로로 길게 쌓아 보여줌 */}
+      {product.detail_images && product.detail_images.length > 0 && (
+        <section className="mx-auto max-w-3xl px-4 py-12 md:py-20">
+          <Text
+            as="caption"
+            className="mb-8 block text-center text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
+          >
+            Product Detail
+          </Text>
+          <div className="flex flex-col items-center gap-4">
+            {product.detail_images.map((src, i) => (
+              <Image
+                key={src}
+                src={src}
+                alt={`${product.name} 상세 이미지 ${i + 1}`}
+                width={768}
+                height={1024}
+                className="h-auto w-full"
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 주문 성공 팝업 */}
       {showSuccess && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">

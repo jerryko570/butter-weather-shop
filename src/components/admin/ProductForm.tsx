@@ -84,28 +84,43 @@ function FormBody({
   const [status, setStatus] = useState<string>(initial?.status ?? 'active')
   const [isActive, setIsActive] = useState(initial?.is_active ?? false)
   const [images, setImages] = useState<string[]>(initial?.images ?? [])
+  const [detailImages, setDetailImages] = useState<string[]>(
+    initial?.detail_images ?? []
+  )
 
   const [uploading, setUploading] = useState(false)
+  const [uploadingDetail, setUploadingDetail] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 갤러리·상세 이미지가 같은 업로드 로직을 써서 헬퍼로 묶음.
+  // setter(어디에 담을지)와 setBusy(어느 로딩 표시)를 인자로 받는다.
+  const uploadInto = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    setBusy: (b: boolean) => void
+  ) => {
     const files = e.target.files
     if (!files || files.length === 0) return
-    setUploading(true)
+    setBusy(true)
     setError(null)
     try {
       const urls: string[] = []
       for (const file of Array.from(files)) {
         urls.push(await uploadProductImage(file))
       }
-      setImages((prev) => [...prev, ...urls])
+      setter((prev) => [...prev, ...urls])
     } catch {
       setError('이미지 업로드에 실패했어요. Storage 정책을 확인해주세요.')
     } finally {
-      setUploading(false)
+      setBusy(false)
       e.target.value = '' // 같은 파일 다시 선택 가능하게 초기화
     }
   }
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
+    uploadInto(e, setImages, setUploading)
+  const handleUploadDetail = (e: React.ChangeEvent<HTMLInputElement>) =>
+    uploadInto(e, setDetailImages, setUploadingDetail)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,6 +148,7 @@ function FormBody({
       status: status as ProductInput['status'],
       is_active: isActive,
       images,
+      detail_images: detailImages,
     }
 
     try {
@@ -189,6 +205,48 @@ function FormBody({
                 accept="image/*"
                 multiple
                 onChange={handleUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </Field>
+
+        {/* 상세 이미지 — 상세페이지에 세로로 길게 쌓인다 */}
+        <Field label="상세 이미지 (상세페이지에 위→아래 순서로 길게 표시)">
+          <div className="space-y-2">
+            {detailImages.map((url, i) => (
+              <div
+                key={url}
+                className="relative overflow-hidden rounded-lg border border-[#eee]"
+              >
+                <Image
+                  src={url}
+                  alt=""
+                  width={600}
+                  height={400}
+                  className="h-auto w-full object-contain"
+                />
+                <span className="absolute top-1 left-1 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+                  {i + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDetailImages((prev) => prev.filter((u) => u !== url))
+                  }
+                  className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[11px] text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-dashed border-[#ccc] text-[12px] text-[var(--color-ink-muted)] hover:border-[var(--color-ink)]">
+              {uploadingDetail ? '업로드 중…' : '+ 상세 이미지 추가'}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleUploadDetail}
                 className="hidden"
               />
             </label>
@@ -303,7 +361,7 @@ function FormBody({
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={submitting || uploading}
+          disabled={submitting || uploading || uploadingDetail}
           className="rounded-lg bg-[var(--color-ink)] px-6 py-3 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {submitting ? '저장 중…' : isEdit ? '수정 저장' : '등록'}
