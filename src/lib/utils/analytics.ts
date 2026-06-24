@@ -33,9 +33,13 @@ export const trackEvent = async (
   eventName: EventName,
   properties: EventProperties = {}
 ) => {
-  // PostHog로도 전송 — 퍼널·세션 분석용 (초기화됐을 때만)
-  if (posthog.__loaded) {
+  // PostHog로도 전송 — 퍼널·세션 분석용.
+  // 미초기화(키 없음)면 capture가 조용히 무시되므로 try/catch로만 감싼다.
+  // (__loaded 체크는 타이밍에 따라 이벤트를 통째로 버릴 수 있어 제거)
+  try {
     posthog.capture(eventName, properties)
+  } catch {
+    // posthog 미초기화 등 — 무시
   }
 
   try {
