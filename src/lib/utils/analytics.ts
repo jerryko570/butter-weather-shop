@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import posthog from 'posthog-js'
 
 type EventName =
   | 'product_view'
@@ -32,6 +33,11 @@ export const trackEvent = async (
   eventName: EventName,
   properties: EventProperties = {}
 ) => {
+  // PostHog로도 전송 — 퍼널·세션 분석용 (초기화됐을 때만)
+  if (posthog.__loaded) {
+    posthog.capture(eventName, properties)
+  }
+
   try {
     const supabase = createClient()
     const sessionId = getOrCreateSessionId()
