@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { QueryProvider } from '@/components/layout/QueryProvider'
+import { PostHogProvider } from '@/components/layout/PostHogProvider'
 import './globals.css'
 import './styles/theme.css'
 
@@ -23,9 +24,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        {/* QueryProvider는 손님·어드민 공통이라 루트에 둔다.
+        {/* PostHog(분석)·QueryProvider는 손님·어드민 공통이라 루트에 둔다.
             쇼핑몰 헤더·푸터는 (shop)/layout.tsx 로 옮겨, 어드민엔 안 붙는다. */}
-        <QueryProvider>{children}</QueryProvider>
+        <PostHogProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </PostHogProvider>
       </body>
     </html>
   )
