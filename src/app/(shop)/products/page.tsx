@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation'
 import { useProducts } from '@/lib/queries/useProducts'
 import { formatKRW } from '@/lib/utils/formatPrice'
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver'
+import { useT } from '@/hooks/useT'
+import { localizedName } from '@/lib/i18n/dictionary'
 import { Suspense, useCallback } from 'react'
 
 const CATEGORIES = [
@@ -32,6 +34,7 @@ export default function ProductsPage() {
 }
 
 function ProductsContent() {
+  const { locale } = useT()
   const searchParams = useSearchParams()
   const category = searchParams.get('category') ?? undefined
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -97,7 +100,7 @@ function ProductsContent() {
                 {product.images[0] ? (
                   <Image
                     src={product.images[0]}
-                    alt={product.name}
+                    alt={localizedName(product, locale)}
                     fill
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -110,7 +113,7 @@ function ProductsContent() {
                   {product.category ?? 'Butter Weather'}
                 </p>
                 <p className="mb-2 text-[13px] text-[#111] group-hover:underline">
-                  {product.name}
+                  {localizedName(product, locale)}
                 </p>
                 <p className="text-[13px] font-medium text-[#111]">
                   {formatKRW(product.price_krw)}
