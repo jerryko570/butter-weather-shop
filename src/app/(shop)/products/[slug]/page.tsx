@@ -18,10 +18,11 @@ import Image from 'next/image'
 import { useProduct } from '@/lib/queries/useProducts' // 상품 조회 (읽기 전용)
 import { usePurchase } from '@/hooks/usePurchase' // 주문 전송 (쓰기 전용, 함수 자체를 import)
 import { formatKRW } from '@/lib/utils/formatPrice' // 가격 포맷팅
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Text from '@/components/ui/Text/Text' // 공통 타이포 컴포넌트 (as로 태그+스타일 결정)
 import { useT } from '@/hooks/useT'
 import { localizedName, localizedDescription } from '@/lib/i18n/dictionary'
+import { trackEvent } from '@/lib/utils/analytics' // 커스텀 분석 이벤트 (Supabase + PostHog)
 
 type Tab = 'detail' | 'shipping'
 
@@ -38,6 +39,17 @@ export default function ProductDetailPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0) // 갤러리에서 보고 있는 이미지 인덱스
   const [activeTab, setActiveTab] = useState<Tab>('detail') // 하단 탭
+
+  // 상품 상세 조회 이벤트 — 상품이 로드되면 발생 (PostHog 퍼널: pageview → product_view → purchase)
+  useEffect(() => {
+    if (!product) return
+    trackEvent('product_view', {
+      product_id: product.id,
+      product_name: product.name,
+      category: product.category ?? undefined,
+      price_krw: product.price_krw,
+    })
+  }, [product])
 
   // 2. 관문 — 여기서 거르면 아래부터는 product가 있다는 게 보장됨
   if (isLoading) {
@@ -73,6 +85,13 @@ export default function ProductDetailPage() {
       },
       {
         onSuccess: () => {
+          // 주문 성공 → 전환 이벤트 (PostHog 퍼널 마지막 단계)
+          trackEvent('purchase', {
+            product_id: product.id,
+            product_name: product.name,
+            quantity,
+            price_krw: product.price_krw * quantity,
+          })
           setShowSuccess(true)
         },
       }
