@@ -17,6 +17,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useProduct } from '@/lib/queries/useProducts' // 상품 조회 (읽기 전용)
 import { usePurchase } from '@/hooks/usePurchase' // 주문 전송 (쓰기 전용, 함수 자체를 import)
+import { usePayment } from '@/hooks/usePayment' // PortOne 결제창 + 서버 검증
 import { formatKRW } from '@/lib/utils/formatPrice' // 가격 포맷팅
 import { useEffect, useState } from 'react'
 import Text from '@/components/ui/Text/Text' // 공통 타이포 컴포넌트 (as로 태그+스타일 결정)
@@ -34,6 +35,7 @@ export default function ProductDetailPage() {
   const { data: product, isLoading, error } = useProduct(slug) // slug로 상품 조회 (useQuery 꾸러미)
 
   const purchase = usePurchase() // 주문 도구 꾸러미. ()로 "실행한 결과"를 담는다 (함수 자체 X)
+  const payment = usePayment() // 결제 도구 꾸러미. 주문 생성 후 PortOne 결제창을 띄운다
 
   const [quantity, setQuantity] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -73,8 +75,9 @@ export default function ProductDetailPage() {
   }
 
   // 3. 동작 정의
-  // 주문 버튼 클릭 → mutate로 서버에 주문 전송
+  // 주문 버튼 클릭 → ① 주문 생성(pending) → ② PortOne 결제창 + 서버 검증 → ③ 검증 통과 시 성공 팝업
   const handlePurchase = () => {
+    // ① 주문을 먼저 서버에 만든다 (payment_id 발급, 상태 pending)
     purchase.mutate(
       {
         product_id: product.id,
@@ -84,15 +87,21 @@ export default function ProductDetailPage() {
         price_usd: product.price_usd ? product.price_usd * quantity : null,
       },
       {
-        onSuccess: () => {
-          // 주문 성공 → 전환 이벤트 (PostHog 퍼널 마지막 단계)
-          trackEvent('purchase', {
-            product_id: product.id,
-            product_name: product.name,
-            quantity,
-            price_krw: product.price_krw * quantity,
+        // ② 주문이 만들어지면 그 주문(payment_id 포함)으로 결제창을 띄운다
+        onSuccess: (createdPurchase) => {
+          payment.mutate(createdPurchase, {
+            // ③ 결제창 통과 + 서버 검증까지 끝나야 진짜 성공
+            onSuccess: () => {
+              // 결제 검증 통과 → 전환 이벤트 (PostHog 퍼널 마지막 단계)
+              trackEvent('purchase', {
+                product_id: product.id,
+                product_name: product.name,
+                quantity,
+                price_krw: product.price_krw * quantity,
+              })
+              setShowSuccess(true)
+            },
           })
-          setShowSuccess(true)
         },
       }
     )
@@ -248,19 +257,22 @@ export default function ProductDetailPage() {
             <button
               type="button"
               onClick={handlePurchase}
-              disabled={purchase.isPending || isSoldOut}
+              disabled={purchase.isPending || payment.isPending || isSoldOut}
               className="w-full bg-[#111] py-3.5 text-[11px] tracking-widest text-white uppercase transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isSoldOut
                 ? 'Sold Out'
                 : purchase.isPending
-                  ? '주문 처리 중...'
-                  : 'Buy It Now'}
+                  ? '주문 생성 중...'
+                  : payment.isPending
+                    ? '결제 진행 중...'
+                    : 'Buy It Now'}
             </button>
 
-            {purchase.isError && (
+            {/* 주문 생성 실패 또는 결제 실패·취소 메시지 */}
+            {(purchase.isError || payment.isError) && (
               <Text as="caption" className="text-[12px] text-red-500">
-                {purchase.error.message}
+                {(purchase.error ?? payment.error)?.message}
               </Text>
             )}
           </div>
