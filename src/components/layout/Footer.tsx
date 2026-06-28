@@ -7,7 +7,12 @@ import Text from '@/components/ui/Text/Text'
 
 const FOOTER_LINKS: {
   title: TranslationKey
-  links: { label: TranslationKey; href: string }[]
+  links: {
+    label: TranslationKey | string
+    href: string
+    external?: boolean // 외부 링크 (새 탭)
+    raw?: boolean // label을 번역 키가 아닌 원문 그대로 사용
+  }[]
 }[] = [
   {
     title: 'footer.shop',
@@ -30,6 +35,12 @@ const FOOTER_LINKS: {
     title: 'footer.brand',
     links: [
       { label: 'footer.about', href: '/about' },
+      {
+        label: 'Instagram',
+        href: 'https://instagram.com',
+        external: true,
+        raw: true,
+      },
       { label: 'footer.contact', href: 'mailto:email.narae@gmail.com' },
     ],
   },
@@ -54,16 +65,31 @@ export function Footer() {
               {t(col.title)}
             </Text>
             <ul className="flex flex-col gap-2">
-              {col.links.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-[12px] text-[#555] transition-colors hover:text-[#111]"
-                  >
-                    {t(link.label)}
-                  </Link>
-                </li>
-              ))}
+              {col.links.map((link) => {
+                const label = link.raw
+                  ? (link.label as string)
+                  : t(link.label as TranslationKey)
+                const className =
+                  'text-[12px] text-[#555] transition-colors hover:text-[#111]'
+                return (
+                  <li key={link.href}>
+                    {link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={className}
+                      >
+                        {label}
+                      </a>
+                    ) : (
+                      <Link href={link.href} className={className}>
+                        {label}
+                      </Link>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ))}
