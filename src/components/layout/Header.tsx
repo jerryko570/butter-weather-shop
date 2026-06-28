@@ -11,6 +11,7 @@ import { useUiStore } from '@/store/uiStore'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
 import Text from '@/components/ui/Text/Text'
+import { AccountNav } from '@/components/auth/AccountNav'
 
 const SHOP_CATEGORIES: { key: TranslationKey; href: string }[] = [
   { key: 'nav.all', href: '/products' },
@@ -87,6 +88,14 @@ export function Header() {
           >
             {t('nav.about')}
           </Link>
+
+          {/* 계정 */}
+          <div className="flex flex-col items-start gap-3 border-t border-[#f0f0f0] pt-4">
+            <AccountNav
+              linkClass="text-[13px] text-[#555] hover:text-[#111]"
+              onNavigate={closeMobileMenu}
+            />
+          </div>
 
           {/* 언어 토글 */}
           <div className="flex items-center gap-2">
