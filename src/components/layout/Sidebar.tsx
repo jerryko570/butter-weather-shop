@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
+import Text from '@/components/ui/Text/Text'
 
 const SHOP_CATEGORIES: { key: TranslationKey; href: string }[] = [
   { key: 'nav.all', href: '/products' },
@@ -40,18 +41,24 @@ export function Sidebar() {
         >
           {t('nav.bag')}
           {totalCount > 0 && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white">
+            <Text
+              as="span"
+              className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white"
+            >
               {totalCount}
-            </span>
+            </Text>
           )}
         </button>
       </div>
 
       {/* Shop + 카테고리 */}
       <div className="border-b border-[#e5e5e5] px-6 py-6">
-        <p className="mb-3 text-[10px] tracking-[0.14em] text-[#aaa] uppercase">
+        <Text
+          as="p"
+          className="mb-3 text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
+        >
           {t('nav.shop')}
-        </p>
+        </Text>
         <nav className="flex flex-col gap-2.5">
           {SHOP_CATEGORIES.map((cat) => (
             <Link
@@ -66,16 +73,21 @@ export function Sidebar() {
 
         {/* 언어 토글 */}
         <div className="mt-6 flex items-center gap-2">
-          <span className="text-[10px] tracking-[0.14em] text-[#aaa] uppercase">
+          <Text
+            as="span"
+            className="text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
+          >
             Language
-          </span>
+          </Text>
           <button
             onClick={() => setLocale('ko')}
             className={`text-[11px] ${locale === 'ko' ? 'text-[#111]' : 'text-[#bbb] hover:text-[#111]'}`}
           >
             KR
           </button>
-          <span className="text-[#ddd]">·</span>
+          <Text as="span" className="text-[#ddd]">
+            ·
+          </Text>
           <button
             onClick={() => setLocale('en')}
             className={`text-[11px] ${locale === 'en' ? 'text-[#111]' : 'text-[#bbb] hover:text-[#111]'}`}
@@ -87,9 +99,12 @@ export function Sidebar() {
 
       {/* 태그라인 */}
       <div className="border-b border-[#e5e5e5] px-6 py-6">
-        <p className="font-serif text-[14px] leading-relaxed whitespace-pre-line text-[#888] italic">
+        <Text
+          as="p"
+          className="font-serif text-[14px] leading-relaxed whitespace-pre-line text-[#888] italic"
+        >
           {t('brand.title')}
-        </p>
+        </Text>
       </div>
 
       {/* About */}

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
+import Text from '@/components/ui/Text/Text'
 
 const FOOTER_LINKS: {
   title: TranslationKey
@@ -46,9 +47,12 @@ export function Footer() {
             key={col.title}
             className="border-r border-[#e5e5e5] p-7 last:border-r-0"
           >
-            <p className="mb-4 text-[10px] tracking-[0.1em] text-[#aaa] uppercase">
+            <Text
+              as="p"
+              className="mb-4 text-[10px] tracking-[0.1em] text-[#aaa] uppercase"
+            >
               {t(col.title)}
-            </p>
+            </Text>
             <ul className="flex flex-col gap-2">
               {col.links.map((link) => (
                 <li key={link.label}>
@@ -67,7 +71,9 @@ export function Footer() {
 
       {/* 카피라이트 + 언어 토글 */}
       <div className="flex items-center justify-between border-t border-[#e5e5e5] px-7 py-4">
-        <p className="text-[11px] text-[#bbb]">{t('footer.rights')}</p>
+        <Text as="p" className="text-[11px] text-[#bbb]">
+          {t('footer.rights')}
+        </Text>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setLocale('ko')}

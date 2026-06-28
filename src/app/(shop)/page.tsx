@@ -10,6 +10,7 @@ import { useProducts } from '@/lib/queries/useProducts'
 import { useT } from '@/hooks/useT'
 import { localizedName } from '@/lib/i18n/dictionary'
 import { formatKRW } from '@/lib/utils/formatPrice'
+import Text from '@/components/ui/Text/Text'
 
 export default function HomePage() {
   const { t, locale } = useT()
@@ -29,12 +30,13 @@ export default function HomePage() {
             'ticker.seoul',
           ] as const
         ).map((key) => (
-          <span
+          <Text
+            as="span"
             key={key}
             className="text-[11px] tracking-widest whitespace-nowrap text-[#aaa] uppercase"
           >
             {t(key)}
-          </span>
+          </Text>
         ))}
       </div>
 
@@ -42,9 +44,12 @@ export default function HomePage() {
       <section className="grid grid-cols-1 border-b border-[#e5e5e5] md:grid-cols-2">
         {/* 이미지 영역 — 첫 상품 이미지로 채움 (없으면 플레이스홀더 도형) */}
         <div className="relative flex min-h-[400px] items-center justify-center overflow-hidden border-b border-[#e5e5e5] bg-[#f0ede8] md:min-h-[520px] md:border-r md:border-b-0">
-          <span className="absolute top-6 left-6 z-10 text-[10px] tracking-[0.14em] text-[#888] uppercase">
+          <Text
+            as="span"
+            className="absolute top-6 left-6 z-10 text-[10px] tracking-[0.14em] text-[#888] uppercase"
+          >
             SS 2026
-          </span>
+          </Text>
           {products[0]?.images?.[0] ? (
             <Image
               src={products[0].images[0]}
@@ -64,15 +69,24 @@ export default function HomePage() {
         {/* 텍스트 영역 */}
         <div className="flex flex-col justify-between p-12 md:p-14">
           <div>
-            <p className="mb-5 text-[10px] tracking-[0.14em] text-[#aaa] uppercase">
+            <Text
+              as="p"
+              className="mb-5 text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
+            >
               {t('hero.eyebrow')}
-            </p>
-            <h1 className="mb-5 font-serif text-[38px] leading-[1.15] whitespace-pre-line text-[#111]">
+            </Text>
+            <Text
+              as="h1"
+              className="mb-5 font-serif text-[38px] leading-[1.15] whitespace-pre-line text-[#111]"
+            >
               {t('hero.title')}
-            </h1>
-            <p className="max-w-xs text-[13px] leading-relaxed font-light whitespace-pre-line text-[#777]">
+            </Text>
+            <Text
+              as="p"
+              className="max-w-xs text-[13px] leading-relaxed font-light whitespace-pre-line text-[#777]"
+            >
               {t('hero.body')}
-            </p>
+            </Text>
             <div className="mt-10 flex gap-3">
               <Link
                 href="/products"
@@ -97,8 +111,12 @@ export default function HomePage() {
               { val: 'WW', label: t('stat.shipping') },
             ].map((stat) => (
               <div key={stat.label}>
-                <p className="font-serif text-[22px] text-[#111]">{stat.val}</p>
-                <p className="mt-1 text-[11px] text-[#aaa]">{stat.label}</p>
+                <Text as="p" className="font-serif text-[22px] text-[#111]">
+                  {stat.val}
+                </Text>
+                <Text as="p" className="mt-1 text-[11px] text-[#aaa]">
+                  {stat.label}
+                </Text>
               </div>
             ))}
           </div>
@@ -107,9 +125,9 @@ export default function HomePage() {
 
       {/* ── New Arrivals ── */}
       <div className="flex items-center justify-between border-b border-[#e5e5e5] px-7 py-5">
-        <h2 className="font-serif text-[20px] text-[#111]">
+        <Text as="h2" className="font-serif text-[20px] text-[#111]">
           {t('section.newArrivals')}
-        </h2>
+        </Text>
         <Link
           href="/products?sort=newest"
           className="border-b border-[#aaa] pb-0.5 text-[11px] tracking-widest text-[#aaa] uppercase transition-colors hover:border-[#111] hover:text-[#111]"
@@ -140,15 +158,21 @@ export default function HomePage() {
               )}
             </div>
             <div className="border-t border-[#e5e5e5] p-4">
-              <p className="mb-1 text-[10px] tracking-widest text-[#aaa] uppercase">
+              <Text
+                as="p"
+                className="mb-1 text-[10px] tracking-widest text-[#aaa] uppercase"
+              >
                 {product.category ?? 'Butter Weather'}
-              </p>
-              <p className="mb-2 text-[13px] text-[#111] group-hover:underline">
+              </Text>
+              <Text
+                as="p"
+                className="mb-2 text-[13px] text-[#111] group-hover:underline"
+              >
                 {localizedName(product, locale)}
-              </p>
-              <p className="text-[13px] font-medium text-[#111]">
+              </Text>
+              <Text as="p" className="text-[13px] font-medium text-[#111]">
                 {formatKRW(product.price_krw)}
-              </p>
+              </Text>
             </div>
           </Link>
         ))}
@@ -172,15 +196,24 @@ export default function HomePage() {
           )}
         </div>
         <div className="flex flex-col justify-center p-12">
-          <p className="mb-4 text-[10px] tracking-[0.12em] text-[#aaa] uppercase">
+          <Text
+            as="p"
+            className="mb-4 text-[10px] tracking-[0.12em] text-[#aaa] uppercase"
+          >
             {t('brand.eyebrow')}
-          </p>
-          <h3 className="mb-4 font-serif text-[22px] leading-snug whitespace-pre-line text-[#111]">
+          </Text>
+          <Text
+            as="h3"
+            className="mb-4 font-serif text-[22px] leading-snug whitespace-pre-line text-[#111]"
+          >
             {t('brand.title')}
-          </h3>
-          <p className="mb-6 text-[12px] leading-relaxed font-light whitespace-pre-line text-[#888]">
+          </Text>
+          <Text
+            as="p"
+            className="mb-6 text-[12px] leading-relaxed font-light whitespace-pre-line text-[#888]"
+          >
             {t('brand.body')}
-          </p>
+          </Text>
           <Link
             href="/about"
             className="inline-block w-fit border-b border-[#111] pb-0.5 text-[11px] tracking-widest text-[#111] uppercase transition-colors hover:border-[#555] hover:text-[#555]"

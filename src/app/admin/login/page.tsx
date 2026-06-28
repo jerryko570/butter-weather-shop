@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Text from '@/components/ui/Text/Text'
 
 // 어드민 로그인 — Supabase Auth 이메일+비밀번호.
 // 로그인 성공 시 세션 쿠키가 심어지고, RLS의 "관리자 이메일만 쓰기" 정책이 열린다.
@@ -44,12 +45,15 @@ export default function AdminLoginPage() {
         className="w-full max-w-sm space-y-6 rounded-2xl bg-white p-8 shadow-sm"
       >
         <div className="space-y-1 text-center">
-          <p className="font-serif text-[15px] tracking-[0.12em] text-[var(--color-ink)] uppercase">
+          <Text
+            as="p"
+            className="font-serif text-[15px] tracking-[0.12em] text-[var(--color-ink)] uppercase"
+          >
             Butter Weather
-          </p>
-          <p className="text-[12px] text-[var(--color-ink-muted)]">
+          </Text>
+          <Text as="p" className="text-[12px] text-[var(--color-ink-muted)]">
             관리자 로그인
-          </p>
+          </Text>
         </div>
 
         <div className="space-y-3">
@@ -74,9 +78,9 @@ export default function AdminLoginPage() {
         </div>
 
         {error && (
-          <p className="text-[12px] text-red-500" role="alert">
+          <Text as="p" className="text-[12px] text-red-500" role="alert">
             {error}
-          </p>
+          </Text>
         )}
 
         <button
