@@ -22,8 +22,8 @@ export default function ShopLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
 
-        {/* 상단바 — 우측 계정 + 장바구니 (모바일·데스크톱 공통 노출) */}
-        <div className="flex items-center justify-end gap-5 border-b border-[#e5e5e5] bg-white px-6 py-3">
+        {/* 데스크톱 상단바 — 우측 계정 + 장바구니 (모바일은 Header가 대신) */}
+        <div className="hidden items-center justify-end gap-5 border-b border-[#e5e5e5] bg-white px-6 py-3 md:flex">
           <AccountNav linkClass="text-[12px] text-[#555] transition-colors hover:text-[#111]" />
           <CartButton className="text-[12px] tracking-wide text-[#555] uppercase transition-colors hover:text-[#111]" />
         </div>
