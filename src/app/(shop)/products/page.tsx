@@ -9,6 +9,7 @@ import { useIntersectionObserver } from '@/hooks/useIntersectionObserver'
 import { useT } from '@/hooks/useT'
 import { localizedName } from '@/lib/i18n/dictionary'
 import { Suspense, useCallback } from 'react'
+import Text from '@/components/ui/Text/Text'
 
 const CATEGORIES = [
   { label: 'All', value: '' },
@@ -24,7 +25,9 @@ export default function ProductsPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-20">
-          <p className="text-[13px] text-[#aaa]">로딩 중...</p>
+          <Text as="p" className="text-[13px] text-[#aaa]">
+            로딩 중...
+          </Text>
         </div>
       }
     >
@@ -76,14 +79,18 @@ function ProductsContent() {
       {/* 로딩 */}
       {isLoading && (
         <div className="flex items-center justify-center py-20">
-          <p className="text-[13px] text-[#aaa]">상품을 불러오는 중...</p>
+          <Text as="p" className="text-[13px] text-[#aaa]">
+            상품을 불러오는 중...
+          </Text>
         </div>
       )}
 
       {/* 상품 없음 */}
       {!isLoading && products.length === 0 && (
         <div className="flex items-center justify-center py-20">
-          <p className="text-[13px] text-[#aaa]">등록된 상품이 없습니다.</p>
+          <Text as="p" className="text-[13px] text-[#aaa]">
+            등록된 상품이 없습니다.
+          </Text>
         </div>
       )}
 
@@ -109,15 +116,21 @@ function ProductsContent() {
                 )}
               </div>
               <div className="border-t border-[#e5e5e5] p-4">
-                <p className="mb-1 text-[10px] tracking-widest text-[#aaa] uppercase">
+                <Text
+                  as="p"
+                  className="mb-1 text-[10px] tracking-widest text-[#aaa] uppercase"
+                >
                   {product.category ?? 'Butter Weather'}
-                </p>
-                <p className="mb-2 text-[13px] text-[#111] group-hover:underline">
+                </Text>
+                <Text
+                  as="p"
+                  className="mb-2 text-[13px] text-[#111] group-hover:underline"
+                >
                   {localizedName(product, locale)}
-                </p>
-                <p className="text-[13px] font-medium text-[#111]">
+                </Text>
+                <Text as="p" className="text-[13px] font-medium text-[#111]">
                   {formatKRW(product.price_krw)}
-                </p>
+                </Text>
               </div>
             </Link>
           ))}
@@ -127,7 +140,9 @@ function ProductsContent() {
       {/* 무한 스크롤 트리거 */}
       <div ref={loadMoreRef} className="py-8 text-center">
         {isFetchingNextPage && (
-          <p className="text-[12px] text-[#aaa]">더 불러오는 중...</p>
+          <Text as="p" className="text-[12px] text-[#aaa]">
+            더 불러오는 중...
+          </Text>
         )}
       </div>
     </div>

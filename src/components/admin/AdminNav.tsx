@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Text from '@/components/ui/Text/Text'
 
 // 어드민 상단 바 — 제목 + 로그아웃. 상품 관리 화면 전체에 붙는다.
 export function AdminNav() {
@@ -24,9 +25,12 @@ export function AdminNav() {
         >
           Butter Weather
         </Link>
-        <span className="rounded-full bg-[var(--color-butter-light)] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[var(--color-butter-dark)] uppercase">
+        <Text
+          as="span"
+          className="rounded-full bg-[var(--color-butter-light)] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[var(--color-butter-dark)] uppercase"
+        >
           Admin
-        </span>
+        </Text>
       </div>
 
       <div className="flex items-center gap-4">

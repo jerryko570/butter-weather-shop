@@ -7,6 +7,7 @@ import {
   useDeleteProduct,
 } from '@/lib/queries/useAdminProducts'
 import { formatKRW } from '@/lib/utils/formatPrice'
+import Text from '@/components/ui/Text/Text'
 
 export default function AdminProductsPage() {
   const { data: products, isLoading, isError } = useAdminProducts()
@@ -21,12 +22,18 @@ export default function AdminProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[20px] font-semibold text-[var(--color-ink)]">
+          <Text
+            as="h1"
+            className="text-[20px] font-semibold text-[var(--color-ink)]"
+          >
             상품 관리
-          </h1>
-          <p className="mt-1 text-[12px] text-[var(--color-ink-muted)]">
+          </Text>
+          <Text
+            as="p"
+            className="mt-1 text-[12px] text-[var(--color-ink-muted)]"
+          >
             {products ? `총 ${products.length}개` : ' '}
-          </p>
+          </Text>
         </div>
         <Link
           href="/admin/products/new"
@@ -37,21 +44,24 @@ export default function AdminProductsPage() {
       </div>
 
       {isLoading && (
-        <p className="py-16 text-center text-[13px] text-[var(--color-ink-muted)]">
+        <Text
+          as="p"
+          className="py-16 text-center text-[13px] text-[var(--color-ink-muted)]"
+        >
           불러오는 중…
-        </p>
+        </Text>
       )}
       {isError && (
-        <p className="py-16 text-center text-[13px] text-red-500">
+        <Text as="p" className="py-16 text-center text-[13px] text-red-500">
           불러오지 못했어요. 로그인 상태를 확인해주세요.
-        </p>
+        </Text>
       )}
 
       {products && products.length === 0 && (
         <div className="rounded-xl border border-dashed border-[#ddd] py-16 text-center">
-          <p className="text-[13px] text-[var(--color-ink-muted)]">
+          <Text as="p" className="text-[13px] text-[var(--color-ink-muted)]">
             아직 상품이 없어요. 첫 상품을 등록해보세요.
-          </p>
+          </Text>
         </div>
       )}
 
@@ -77,17 +87,24 @@ export default function AdminProductsPage() {
 
               {/* 정보 */}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
+                <Text
+                  as="p"
+                  className="truncate text-[14px] font-medium text-[var(--color-ink)]"
+                >
                   {p.name}
-                </p>
-                <p className="text-[12px] text-[var(--color-ink-muted)]">
+                </Text>
+                <Text
+                  as="p"
+                  className="text-[12px] text-[var(--color-ink-muted)]"
+                >
                   {formatKRW(p.price_krw)} · 재고 {p.stock}
-                </p>
+                </Text>
               </div>
 
               {/* 상태 뱃지 */}
               <div className="flex shrink-0 gap-1.5">
-                <span
+                <Text
+                  as="span"
                   className={
                     p.is_active
                       ? 'rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600'
@@ -95,11 +112,14 @@ export default function AdminProductsPage() {
                   }
                 >
                   {p.is_active ? '공개' : '비공개'}
-                </span>
+                </Text>
                 {p.status === 'sold_out' && (
-                  <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                  <Text
+                    as="span"
+                    className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-500"
+                  >
                     품절
-                  </span>
+                  </Text>
                 )}
               </div>
 

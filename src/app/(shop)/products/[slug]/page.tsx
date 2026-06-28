@@ -67,7 +67,7 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Text as="caption" className="text-[13px] text-red-500">
+        <Text as="span" className="text-[13px] text-red-500">
           상품을 찾을 수 없습니다.
         </Text>
       </div>
@@ -170,7 +170,7 @@ export default function ProductDetailPage() {
           <div className="flex flex-col gap-6">
             <div>
               <Text
-                as="caption"
+                as="span"
                 className="mb-2 block text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
               >
                 {product.category ?? 'Butter Weather'}
@@ -214,9 +214,12 @@ export default function ProductDetailPage() {
 
             {/* 수량 선택 */}
             <div className="flex items-center gap-3">
-              <span className="text-[12px] tracking-widest text-[#aaa] uppercase">
+              <Text
+                as="span"
+                className="text-[12px] tracking-widest text-[#aaa] uppercase"
+              >
                 수량
-              </span>
+              </Text>
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -224,9 +227,12 @@ export default function ProductDetailPage() {
               >
                 −
               </button>
-              <span className="w-6 text-center text-[13px] text-[#111]">
+              <Text
+                as="span"
+                className="w-6 text-center text-[13px] text-[#111]"
+              >
                 {quantity}
-              </span>
+              </Text>
               <button
                 type="button"
                 onClick={() =>
@@ -236,16 +242,19 @@ export default function ProductDetailPage() {
               >
                 +
               </button>
-              <span className="text-[11px] text-[#bbb]">
+              <Text as="span" className="text-[11px] text-[#bbb]">
                 재고 {product.stock}개
-              </span>
+              </Text>
             </div>
 
             {/* 합계 */}
             <div className="flex items-baseline justify-between border-t border-[#e5e5e5] pt-4">
-              <span className="text-[11px] tracking-widest text-[#aaa] uppercase">
+              <Text
+                as="span"
+                className="text-[11px] tracking-widest text-[#aaa] uppercase"
+              >
                 Total
-              </span>
+              </Text>
               <Text as="p" className="text-[20px] font-medium text-[#111]">
                 {formatKRW(product.price_krw * quantity)}
               </Text>
@@ -271,7 +280,7 @@ export default function ProductDetailPage() {
 
             {/* 주문 생성 실패 또는 결제 실패·취소 메시지 */}
             {(purchase.isError || payment.isError) && (
-              <Text as="caption" className="text-[12px] text-red-500">
+              <Text as="span" className="text-[12px] text-red-500">
                 {(purchase.error ?? payment.error)?.message}
               </Text>
             )}
@@ -429,7 +438,7 @@ function ShippingBlock({
   return (
     <div>
       <Text
-        as="caption"
+        as="span"
         className="mb-4 block text-[11px] tracking-widest text-[#111] uppercase"
       >
         {title}

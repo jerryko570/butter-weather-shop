@@ -10,6 +10,7 @@ import {
   uploadProductImage,
   type ProductInput,
 } from '@/lib/queries/useAdminProducts'
+import Text from '@/components/ui/Text/Text'
 
 // 등록 모드(productId 없음) / 수정 모드(productId 있음) 둘 다 처리
 export function ProductForm({ productId }: { productId?: string }) {
@@ -25,9 +26,12 @@ export function ProductForm({ productId }: { productId?: string }) {
 
   if (isEdit && loadingExisting) {
     return (
-      <p className="py-16 text-center text-[13px] text-[var(--color-ink-muted)]">
+      <Text
+        as="p"
+        className="py-16 text-center text-[13px] text-[var(--color-ink-muted)]"
+      >
         불러오는 중…
-      </p>
+      </Text>
     )
   }
 
@@ -166,9 +170,12 @@ function FormBody({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-[20px] font-semibold text-[var(--color-ink)]">
+        <Text
+          as="h1"
+          className="text-[20px] font-semibold text-[var(--color-ink)]"
+        >
           {isEdit ? '상품 수정' : '새 상품 등록'}
-        </h1>
+        </Text>
       </div>
 
       <div className="space-y-5 rounded-xl bg-white p-6 shadow-sm">
@@ -226,9 +233,12 @@ function FormBody({
                   height={400}
                   className="h-auto w-full object-contain"
                 />
-                <span className="absolute top-1 left-1 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+                <Text
+                  as="span"
+                  className="absolute top-1 left-1 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white"
+                >
                   {i + 1}
-                </span>
+                </Text>
                 <button
                   type="button"
                   onClick={() =>
@@ -256,7 +266,11 @@ function FormBody({
         {/* 이름 */}
         <div className="grid grid-cols-2 gap-4">
           <Field label="이름 (국문) *">
-            <TextInput value={name} onChange={setName} placeholder="버터 드롭 키링" />
+            <TextInput
+              value={name}
+              onChange={setName}
+              placeholder="버터 드롭 키링"
+            />
           </Field>
           <Field label="이름 (영문)">
             <TextInput
@@ -322,7 +336,11 @@ function FormBody({
             </select>
           </Field>
           <Field label="태그 (쉼표로 구분)">
-            <TextInput value={tags} onChange={setTags} placeholder="여름, 파스텔" />
+            <TextInput
+              value={tags}
+              onChange={setTags}
+              placeholder="여름, 파스텔"
+            />
           </Field>
         </div>
 
@@ -353,9 +371,9 @@ function FormBody({
       </div>
 
       {error && (
-        <p className="text-[13px] text-red-500" role="alert">
+        <Text as="p" className="text-[13px] text-red-500" role="alert">
           {error}
-        </p>
+        </Text>
       )}
 
       <div className="flex items-center gap-3">
@@ -388,9 +406,12 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[12px] font-medium text-[var(--color-ink-muted)]">
+      <Text
+        as="span"
+        className="text-[12px] font-medium text-[var(--color-ink-muted)]"
+      >
         {label}
-      </span>
+      </Text>
       {children}
     </label>
   )

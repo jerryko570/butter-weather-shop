@@ -10,6 +10,7 @@ import { useCart } from '@/hooks/useCart'
 import { useUiStore } from '@/store/uiStore'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
+import Text from '@/components/ui/Text/Text'
 
 const SHOP_CATEGORIES: { key: TranslationKey; href: string }[] = [
   { key: 'nav.all', href: '/products' },
@@ -45,9 +46,12 @@ export function Header() {
           >
             {t('nav.bag')}
             {totalCount > 0 && (
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white">
+              <Text
+                as="span"
+                className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white"
+              >
                 {totalCount}
-              </span>
+              </Text>
             )}
           </button>
           <button
@@ -86,16 +90,21 @@ export function Header() {
 
           {/* 언어 토글 */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] tracking-[0.14em] text-[#aaa] uppercase">
+            <Text
+              as="span"
+              className="text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
+            >
               Language
-            </span>
+            </Text>
             <button
               onClick={() => setLocale('ko')}
               className={`text-[12px] ${locale === 'ko' ? 'text-[#111]' : 'text-[#bbb]'}`}
             >
               KR
             </button>
-            <span className="text-[#ddd]">·</span>
+            <Text as="span" className="text-[#ddd]">
+              ·
+            </Text>
             <button
               onClick={() => setLocale('en')}
               className={`text-[12px] ${locale === 'en' ? 'text-[#111]' : 'text-[#bbb]'}`}
