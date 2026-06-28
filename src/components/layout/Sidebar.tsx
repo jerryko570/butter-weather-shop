@@ -4,7 +4,6 @@
 // 좁은 화면(<md)에서는 숨고, 대신 Header(모바일 상단바)가 뜬다.
 
 import Link from 'next/link'
-import { useCart } from '@/hooks/useCart'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
 import Text from '@/components/ui/Text/Text'
@@ -22,33 +21,18 @@ const SOCIAL = [
 ]
 
 export function Sidebar() {
-  const { totalCount, openCart } = useCart()
   const { t, locale, setLocale } = useT()
 
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-[#e5e5e5] bg-white md:flex">
-      {/* 로고 + Bag */}
-      <div className="flex items-center justify-between border-b border-[#e5e5e5] px-6 py-5">
+      {/* 로고 */}
+      <div className="border-b border-[#e5e5e5] px-6 py-5">
         <Link
           href="/"
           className="font-serif text-[15px] tracking-[0.12em] text-[#111] uppercase"
         >
           Butter Weather
         </Link>
-        <button
-          onClick={openCart}
-          className="flex items-center gap-1.5 text-[11px] tracking-wide text-[#555] uppercase transition-colors hover:text-[#111]"
-        >
-          {t('nav.bag')}
-          {totalCount > 0 && (
-            <Text
-              as="span"
-              className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white"
-            >
-              {totalCount}
-            </Text>
-          )}
-        </button>
       </div>
 
       {/* Shop + 카테고리 */}

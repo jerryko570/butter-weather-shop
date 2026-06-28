@@ -6,12 +6,10 @@
 // 데스크톱(md+)에서는 숨고 Sidebar가 대신 뜬다.
 
 import Link from 'next/link'
-import { useCart } from '@/hooks/useCart'
 import { useUiStore } from '@/store/uiStore'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
 import Text from '@/components/ui/Text/Text'
-import { AccountNav } from '@/components/auth/AccountNav'
 
 const SHOP_CATEGORIES: { key: TranslationKey; href: string }[] = [
   { key: 'nav.all', href: '/products' },
@@ -26,13 +24,12 @@ const SOCIAL = [
 ]
 
 export function Header() {
-  const { totalCount, openCart } = useCart()
   const { isMobileMenuOpen, openMobileMenu, closeMobileMenu } = useUiStore()
   const { t, locale, setLocale } = useT()
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#e5e5e5] bg-white md:hidden">
-      {/* 상단: 로고 + Bag + 햄버거 */}
+      {/* 상단: 로고 + 햄버거 */}
       <div className="flex h-12 items-center justify-between px-5">
         <Link
           href="/"
@@ -40,29 +37,13 @@ export function Header() {
         >
           Butter Weather
         </Link>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={openCart}
-            className="flex items-center gap-1.5 text-[11px] tracking-wide text-[#555] uppercase"
-          >
-            {t('nav.bag')}
-            {totalCount > 0 && (
-              <Text
-                as="span"
-                className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111] text-[9px] text-white"
-              >
-                {totalCount}
-              </Text>
-            )}
-          </button>
-          <button
-            className="text-[16px] text-[#111]"
-            onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
-            aria-label="Menu"
-          >
-            {isMobileMenuOpen ? '✕' : '☰'}
-          </button>
-        </div>
+        <button
+          className="text-[16px] text-[#111]"
+          onClick={isMobileMenuOpen ? closeMobileMenu : openMobileMenu}
+          aria-label="Menu"
+        >
+          {isMobileMenuOpen ? '✕' : '☰'}
+        </button>
       </div>
 
       {/* 가로 카테고리 줄 */}
@@ -88,14 +69,6 @@ export function Header() {
           >
             {t('nav.about')}
           </Link>
-
-          {/* 계정 */}
-          <div className="flex flex-col items-start gap-3 border-t border-[#f0f0f0] pt-4">
-            <AccountNav
-              linkClass="text-[13px] text-[#555] hover:text-[#111]"
-              onNavigate={closeMobileMenu}
-            />
-          </div>
 
           {/* 언어 토글 */}
           <div className="flex items-center gap-2">
