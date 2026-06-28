@@ -8,7 +8,6 @@ import { useCart } from '@/hooks/useCart'
 import { useT } from '@/hooks/useT'
 import type { TranslationKey } from '@/lib/i18n/dictionary'
 import Text from '@/components/ui/Text/Text'
-import { AccountNav } from '@/components/auth/AccountNav'
 
 const SHOP_CATEGORIES: { key: TranslationKey; href: string }[] = [
   { key: 'nav.all', href: '/products' },
@@ -116,19 +115,6 @@ export function Sidebar() {
         >
           {t('nav.about')}
         </Link>
-      </div>
-
-      {/* 계정 */}
-      <div className="border-t border-[#e5e5e5] px-6 py-6">
-        <Text
-          as="p"
-          className="mb-3 text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
-        >
-          Account
-        </Text>
-        <nav className="flex flex-col items-start gap-2.5">
-          <AccountNav linkClass="text-[14px] text-[#555] transition-colors hover:text-[#111]" />
-        </nav>
       </div>
 
       {/* 하단 소셜 — mt-auto로 바닥에 고정 */}
