@@ -41,33 +41,28 @@ export default function HomePage() {
       </div>
 
       {/* ── 히어로 ── */}
-      <section className="grid grid-cols-1 border-b border-[#e5e5e5] md:grid-cols-2">
+      <section className="grid grid-cols-1 border-b border-[#e5e5e5] lg:grid-cols-2">
         {/* 이미지 영역 — 첫 상품 이미지로 채움 (없으면 플레이스홀더 도형) */}
-        <div className="relative flex min-h-[400px] items-center justify-center overflow-hidden border-b border-[#e5e5e5] bg-[#f0ede8] md:min-h-[520px] md:border-r md:border-b-0">
+        <div className="relative flex min-h-[400px] items-center justify-center overflow-hidden border-b border-[#e5e5e5] bg-[#f0ede8] lg:min-h-[520px] lg:border-r lg:border-b-0">
           <Text
             as="span"
             className="absolute top-6 left-6 z-10 text-[10px] tracking-[0.14em] text-[#888] uppercase"
           >
             SS 2026
           </Text>
-          {products[0]?.images?.[0] ? (
-            <Image
-              src={products[0].images[0]}
-              alt={localizedName(products[0], locale)}
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-48 w-48 items-center justify-center rounded-full bg-[#e0dbd2]">
-              <div className="h-28 w-28 rounded-full bg-[#c8c2b5]" />
-            </div>
-          )}
+          {/* 메인 키비주얼 — 고정 이미지 (public/main-key-visual.png) */}
+          <Image
+            src="/main-key-visual.png"
+            alt="Butter Weather"
+            fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover"
+            priority
+          />
         </div>
 
         {/* 텍스트 영역 */}
-        <div className="flex flex-col justify-between p-12 md:p-14">
+        <div className="flex flex-col justify-between p-12 lg:p-14">
           <div>
             <Text
               as="p"
@@ -137,12 +132,12 @@ export default function HomePage() {
       </div>
 
       {/* ── 상품 미리보기 (실제 DB 최신 8개) ── */}
-      <div className="grid grid-cols-2 border-b border-[#e5e5e5] md:grid-cols-4">
+      <div className="grid grid-cols-2 border-b border-[#e5e5e5] lg:grid-cols-4">
         {products.map((product) => (
           <Link
             key={product.id}
             href={`/products/${product.slug}`}
-            className="group border-r border-b border-[#e5e5e5] [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(4n)]:border-r-0"
+            className="group border-r border-b border-[#e5e5e5] [&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(4n)]:border-r-0"
           >
             <div className="relative flex aspect-3/4 items-center justify-center overflow-hidden bg-[#f5f5f5]">
               {product.images?.[0] ? (
@@ -150,7 +145,7 @@ export default function HomePage() {
                   src={product.images[0]}
                   alt={localizedName(product, locale)}
                   fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
+                  sizes="(max-width: 1024px) 50vw, 25vw"
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
@@ -179,14 +174,14 @@ export default function HomePage() {
       </div>
 
       {/* ── 브랜드 스토리 스트립 ── */}
-      <div className="grid grid-cols-1 border-b border-[#e5e5e5] md:grid-cols-2">
-        <div className="relative flex min-h-[200px] items-center justify-center overflow-hidden border-b border-[#e5e5e5] bg-[#f7f4f0] p-16 md:border-r md:border-b-0">
+      <div className="grid grid-cols-1 border-b border-[#e5e5e5] lg:grid-cols-2">
+        <div className="relative flex min-h-[200px] items-center justify-center overflow-hidden border-b border-[#e5e5e5] bg-[#f7f4f0] p-16 lg:border-r lg:border-b-0">
           {products[1]?.images?.[0] ? (
             <Image
               src={products[1].images[0]}
               alt={localizedName(products[1], locale)}
               fill
-              sizes="(max-width: 768px) 100vw, 50vw"
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
           ) : (

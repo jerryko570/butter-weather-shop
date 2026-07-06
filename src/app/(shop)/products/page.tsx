@@ -57,7 +57,7 @@ function ProductsContent() {
   return (
     <div>
       {/* 카테고리 필터 */}
-      <div className="flex items-center gap-6 border-b border-[#e5e5e5] px-7 py-4">
+      <div className="flex items-center gap-6 border-b border-gray-200 px-7 py-4">
         {CATEGORIES.map((cat) => {
           const isActive = (category ?? '') === cat.value
           return (
@@ -96,12 +96,12 @@ function ProductsContent() {
 
       {/* 상품 그리드 */}
       {products.length > 0 && (
-        <div className="grid grid-cols-2 border-b border-[#e5e5e5] md:grid-cols-4">
+        <div className="grid grid-cols-2 border-b border-[#e5e5e5] lg:grid-cols-4">
           {products.map((product) => (
             <Link
               key={product.id}
               href={`/products/${product.slug}`}
-              className="group border-r border-b border-[#e5e5e5] last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(4n)]:border-r-0"
+              className="group border-r border-b border-[#e5e5e5] last:border-r-0 [&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(4n)]:border-r-0"
             >
               <div className="relative flex aspect-3/4 items-center justify-center overflow-hidden bg-[#f5f5f5]">
                 {product.images[0] ? (

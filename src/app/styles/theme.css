@@ -1,15 +1,16 @@
 :root {
-  /* 브랜드 컬러 */
-  --color-butter: #f5c842;
-  --color-butter-light: #fdf3c0;
-  --color-butter-dark: #d4a800;
-  --color-sky: #a8d8ea;
+  /* 브랜드 컬러 — base 변수는 grayscale처럼 접두사 없이 둔다.
+     (theme의 --color-* 와 이름이 겹치면 자기참조가 생겨 무효가 되므로 분리) */
+  --butter: #f5c842;
+  --butter-light: #fdf3c0;
+  --butter-dark: #d4a800;
+  --sky: #a8d8ea;
 
   /* 의미 토큰 (라이트) */
-  --color-cloud: #f7f7f7; /* 배경 */
-  --color-ink: #1a1a1a; /* 본문 텍스트 */
-  --color-ink-muted: #6b6b6b; /* 보조 텍스트 */
-  --color-ink-subtle: #c4c4c4; /* 비활성·플레이스홀더 */
+  --cloud: #f7f7f7; /* 배경 */
+  --ink: #1a1a1a; /* 본문 텍스트 */
+  --ink-muted: #6b6b6b; /* 보조 텍스트 */
+  --ink-subtle: #c4c4c4; /* 비활성·플레이스홀더 */
 
   /* Grayscale */
   --gray-50: #fafafa;
@@ -38,10 +39,10 @@
    브랜드 액센트(butter/sky)는 다크에서도 유지. */
 .dark {
   /* 의미 토큰 (다크) */
-  --color-cloud: #121212; /* 배경 */
-  --color-ink: #f7f7f7; /* 본문 텍스트 */
-  --color-ink-muted: #a3a3a3; /* 보조 텍스트 */
-  --color-ink-subtle: #525252; /* 비활성·플레이스홀더 */
+  --cloud: #121212; /* 배경 */
+  --ink: #f7f7f7; /* 본문 텍스트 */
+  --ink-muted: #a3a3a3; /* 보조 텍스트 */
+  --ink-subtle: #525252; /* 비활성·플레이스홀더 */
 
   /* Grayscale 반전 */
   --gray-50: #0a0a0a;
@@ -60,16 +61,16 @@
 /* Tailwind v4 — 토큰을 유틸리티로 노출 (bg-gray-100, text-ink, bg-butter 등) */
 @theme inline {
   /* 브랜드 */
-  --color-butter: var(--color-butter);
-  --color-butter-light: var(--color-butter-light);
-  --color-butter-dark: var(--color-butter-dark);
-  --color-sky: var(--color-sky);
+  --color-butter: var(--butter);
+  --color-butter-light: var(--butter-light);
+  --color-butter-dark: var(--butter-dark);
+  --color-sky: var(--sky);
 
   /* 의미 토큰 */
-  --color-cloud: var(--color-cloud);
-  --color-ink: var(--color-ink);
-  --color-ink-muted: var(--color-ink-muted);
-  --color-ink-subtle: var(--color-ink-subtle);
+  --color-cloud: var(--cloud);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
 
   /* Grayscale */
   --color-gray-50: var(--gray-50);

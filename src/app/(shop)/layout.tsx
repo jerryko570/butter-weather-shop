@@ -14,7 +14,7 @@ export default function ShopLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="md:flex md:min-h-screen">
+    <div className="lg:flex lg:min-h-screen">
       {/* 데스크톱 좌측 사이드바 */}
       <Sidebar />
 
@@ -23,7 +23,7 @@ export default function ShopLayout({
         <Header />
 
         {/* 데스크톱 상단바 — 우측 계정 + 장바구니 (모바일은 Header가 대신) */}
-        <div className="hidden items-center justify-end gap-5 border-b border-[#e5e5e5] bg-white px-6 py-3 md:flex">
+        <div className="hidden items-center justify-end gap-5 border-b border-[#e5e5e5] bg-white px-6 py-3 lg:flex">
           <AccountNav linkClass="text-[12px] text-[#555] transition-colors hover:text-[#111]" />
           <CartButton className="text-[12px] tracking-wide text-[#555] uppercase transition-colors hover:text-[#111]" />
         </div>
