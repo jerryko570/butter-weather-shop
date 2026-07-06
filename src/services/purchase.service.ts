@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
 /**
@@ -55,10 +56,13 @@ export async function getPurchaseByPaymentId(
 /**
  결제가 진짜로 확인된 주문을 'paid'(결제완료)로 바꾼다.
  - 반드시 서버에서 PortOne 검증을 통과한 뒤에만 호출할 것. (프론트 말만 믿고 바꾸면 안 됨)
+ - ⚠️ service role로 쓴다: purchases RLS가 UPDATE를 막아서, anon으로 하면
+   에러 없이 0건만 바뀌어 상태가 pending에 그대로 묶인다. (이미 검증을 통과한
+   신뢰된 서버 작업이므로 RLS 우회가 안전하다)
 */
 export async function markPurchasePaid(paymentId: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('purchases')
     .update({ status: 'paid' })
     .eq('payment_id', paymentId)
@@ -69,10 +73,11 @@ export async function markPurchasePaid(paymentId: string): Promise<void> {
 /**
  결제가 취소된 주문을 'cancelled'(취소)로 바꾼다.
  - 반드시 서버에서 PortOne 취소가 성공한 뒤에만 호출할 것.
+ - markPurchasePaid와 같은 이유로 service role 사용 (RLS UPDATE 차단 우회).
 */
 export async function markPurchaseCancelled(paymentId: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('purchases')
     .update({ status: 'cancelled' })
     .eq('payment_id', paymentId)
