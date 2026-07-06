@@ -14,8 +14,15 @@ export const useProducts = (category?: string) => {
       // 함수 본문: 코드 줄
       let query = supabase
         .from('products')
-        .select('*')
-        .eq('is_active', true)
+        .select('*') // 어떤 정보 칸을 볼건지
+        .eq('is_active', true) // 어떤 행을 꺼낼건지 (ex.이름,이미지,가격 등)
+        // 스키마(DB)와 코드(훅) 연결되는 첫번째 지점
+        // 되돌릴 수 있음. 데이터 안날라감. 주문 기록 안깨짐
+        // .from/.select/.eq => 그 정책의 검사를 받으러 가는 요청 / RLS(규칙)
+        // 주문서가 RLS를 통과해야 결과가 나옴
+        // 종류는 다르지만 실행 때 만나고, 주문서가 DB 가면 RLS가 결과로 나갈 행 하나하나 검사
+        // 읽기만 볼 수 있는 행만 조용히 골라주고(숨김) 쓰기면 권한 없음 엄격히 입구컷
+        // RLS는 행을 본다
         .range(pageParam as number, (pageParam as number) + PAGE_SIZE - 1)
         .order('created_at', { ascending: false })
 
