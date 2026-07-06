@@ -54,9 +54,12 @@ export default function ProductDetailPage() {
   }, [product])
 
   // 2. 관문 — 여기서 거르면 아래부터는 product가 있다는 게 보장됨
+  // min-h-screen으로 화면 높이만큼 자리를 미리 예약한다.
+  // 이렇게 안 하면 로딩 중엔 키가 작다가 데이터가 뜰 때 페이지가 길어지면서
+  // 푸터가 아래로 점프(CLS)한다.
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex min-h-screen items-center justify-center py-20">
         <Text as="h3" className="text-[13px] text-[#aaa]">
           상품을 불러오는 중...
         </Text>
@@ -66,7 +69,7 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex min-h-screen items-center justify-center py-20">
         <Text as="span" className="text-[13px] text-red-500">
           상품을 찾을 수 없습니다.
         </Text>
@@ -120,16 +123,16 @@ export default function ProductDetailPage() {
   return (
     <div>
       {/* ── 상단 2단: 좌 갤러리 / 우 정보블록 ── */}
-      <div className="grid grid-cols-1 border-b border-[#e5e5e5] md:grid-cols-2">
+      <div className="grid grid-cols-1 border-b border-[#e5e5e5] lg:grid-cols-2">
         {/* 좌: 메인 이미지 + 썸네일 갤러리 */}
-        <div className="border-b border-[#e5e5e5] md:border-r md:border-b-0">
+        <div className="border-b border-[#e5e5e5] lg:border-r lg:border-b-0">
           <div className="relative flex aspect-square items-center justify-center bg-[#f5f5f5]">
             {images[selectedImage] ? (
               <Image
                 src={images[selectedImage]}
                 alt={product.name}
                 fill
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="(max-width: 1024px) 100vw, 50vw"
                 className="object-cover"
                 priority
               />
@@ -166,7 +169,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* 우: 정보블록 */}
-        <div className="flex flex-col justify-between p-8 md:p-12">
+        <div className="flex flex-col justify-between p-8 lg:p-12">
           <div className="flex flex-col gap-6">
             <div>
               <Text
@@ -314,7 +317,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* 탭 내용 */}
-        <div className="mx-auto max-w-3xl px-4 py-12 md:py-20">
+        <div className="mx-auto max-w-3xl px-4 py-12 lg:py-20">
           {activeTab === 'detail' && (
             <>
               {product.detail_images && product.detail_images.length > 0 ? (
@@ -326,7 +329,7 @@ export default function ProductDetailPage() {
                       alt={`${product.name} 상세 이미지 ${i + 1}`}
                       width={768}
                       height={1024}
-                      sizes="(max-width: 768px) 100vw, 768px"
+                      sizes="(max-width: 1024px) 100vw, 768px"
                       className="h-auto w-full"
                     />
                   ))}

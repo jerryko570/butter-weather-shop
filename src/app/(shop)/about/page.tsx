@@ -24,8 +24,8 @@ export default function AboutPage() {
   return (
     <div>
       {/* ── 히어로 ── */}
-      <section className="grid grid-cols-1 border-b border-[#e5e5e5] md:grid-cols-2">
-        <div className="flex flex-col justify-center p-12 md:p-16">
+      <section className="grid grid-cols-1 border-b border-[#e5e5e5] lg:grid-cols-2">
+        <div className="flex flex-col justify-center p-12 lg:p-16">
           <Text
             as="p"
             className="mb-5 text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
@@ -39,13 +39,13 @@ export default function AboutPage() {
             {t('about.title')}
           </Text>
         </div>
-        <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden border-t border-[#e5e5e5] bg-[#f0ede8] md:border-t-0 md:border-l">
+        <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden border-t border-[#e5e5e5] bg-[#f0ede8] lg:border-t-0 lg:border-l">
           {hero?.images?.[0] ? (
             <Image
               src={hero.images[0]}
               alt={localizedName(hero, locale)}
               fill
-              sizes="(max-width: 768px) 100vw, 50vw"
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
               priority
             />
@@ -56,7 +56,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── 본문 ── */}
-      <section className="mx-auto max-w-2xl px-6 py-16 md:py-24">
+      <section className="mx-auto max-w-2xl px-6 py-16 lg:py-24">
         <div className="space-y-6 text-[14px] leading-loose font-light text-[#555]">
           <Text as="p">{t('about.body1')}</Text>
           <Text as="p">{t('about.body2')}</Text>
@@ -72,11 +72,11 @@ export default function AboutPage() {
         >
           {t('about.values')}
         </Text>
-        <div className="grid grid-cols-1 border-t border-[#e5e5e5] md:grid-cols-3">
+        <div className="grid grid-cols-1 border-t border-[#e5e5e5] lg:grid-cols-3">
           {values.map((v, i) => (
             <div
               key={v.title}
-              className="border-b border-[#e5e5e5] p-10 md:border-r md:border-b-0 md:last:border-r-0"
+              className="border-b border-[#e5e5e5] p-10 lg:border-r lg:border-b-0 lg:last:border-r-0"
             >
               <Text
                 as="p"

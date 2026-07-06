@@ -23,29 +23,29 @@ export function Header() {
   const { t, locale, setLocale } = useT()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#e5e5e5] bg-white md:hidden">
+    <header className="sticky top-0 z-50 border-b border-gray-300 bg-white lg:hidden">
       {/* 상단: 로고(좌) | 계정 + 장바구니 + 언어(우) */}
-      <div className="flex h-12 items-center justify-between gap-3 px-5">
+      <div className="flex h-16 items-center justify-between gap-3 px-6">
         <Link
           href="/"
-          className="font-serif text-[14px] tracking-[0.12em] whitespace-nowrap text-[#111] uppercase"
+          className="text-[20px] font-medium whitespace-nowrap text-gray-900"
         >
-          Butter Weather
+          Butterweather
         </Link>
 
         <div className="flex items-center gap-3">
-          <AccountNav linkClass="text-[11px] whitespace-nowrap text-[#555] transition-colors hover:text-[#111]" />
-          <CartButton className="text-[11px] tracking-wide whitespace-nowrap text-[#555] uppercase transition-colors hover:text-[#111]" />
+          <AccountNav linkClass="text-[14px] whitespace-nowrap text-[#555] transition-colors hover:text-[#111]" />
+          <CartButton className="text-[14px] tracking-wide whitespace-nowrap text-[#555] uppercase transition-colors hover:text-[#111]" />
 
           {/* 언어 토글 KR | EN */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setLocale('ko')}
               className={`text-[11px] ${locale === 'ko' ? 'text-[#111]' : 'text-[#bbb] hover:text-[#111]'}`}
             >
               KR
             </button>
-            <Text as="span" className="text-[11px] text-[#ddd]">
+            <Text as="p" className="text-[#ddd]">
               |
             </Text>
             <button
@@ -64,7 +64,7 @@ export function Header() {
           <Link
             key={cat.key}
             href={cat.href}
-            className="text-[11px] tracking-widest whitespace-nowrap text-[#555] uppercase transition-colors hover:text-[#111]"
+            className="text-[11px] tracking-widest whitespace-nowrap text-gray-900 uppercase transition-colors hover:cursor-pointer hover:text-gray-500"
           >
             {t(cat.key)}
           </Link>
