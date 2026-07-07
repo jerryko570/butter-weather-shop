@@ -160,6 +160,39 @@ React Query가 서버 데이터를 `data / error / isLoading`로 관리 + 캐시
 
 ---
 
+## 7. 백↔프론트를 잇는 "두 통로"
+
+데이터를 잇는 건 **주로 커스텀 훅**, 단 **비밀키가 필요한 건 서버(Route Handler)**가 잇는다.
+
+```
+① 커스텀 훅 (lib/queries)  ← 주 연결점 (지금까지 배운 것)
+   브라우저 → supabase-js로 DB 직접 호출
+   → 읽기(상품 조회), 간단한 쓰기
+   → RLS가 지켜줌 (서버 안 거쳐도 안전)
+
+② Route Handler (app/api)  ← 서버 경유 (아직 안 배운 것)
+   브라우저 → 내 서버(app/api) → DB
+   → 시크릿 키 필요한 것만: 결제 검증, service role, 웹훅
+   → 왜? Toss·service role 키는 브라우저에 두면 안 되니까 서버에서
+```
+
+- **읽기·간단 쓰기 = 커스텀 훅** ✅
+- **시크릿 필요한 서버 작업 = Route Handler** (예: `markPurchasePaid`가 service role로 purchases UPDATE → RLS 우회)
+
+### ⚠️ "query" 단어 정리 (헷갈림 방지)
+같은 `query`인데 가리키는 게 다르다. 공통 뿌리 = "데이터 물어보기/요청".
+
+| 어디서 본 `query` | 정체 |
+| --- | --- |
+| `lib/queries` (폴더) | 조회 훅들이 사는 **폴더 이름** (React Query 훅을 모아둠) |
+| React Query (`useQuery`) | **라이브러리** (TanStack Query) — 서버 상태·캐시 관리 |
+| `let query = supabase…` | supabase **쿼리 빌더** (주문서 조립 중인 변수) |
+| SQL query | DB에 보내는 **실제 요청** (`select …`) |
+
+→ `lib/queries` = "React Query로 만든 훅들을 모아둔 폴더"지, 폴더 자체가 React Query인 건 아님.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **JOIN = purchases 읽는 훅에서 `.select('*, products(images, slug)')` → fk 따라 products를 중첩 객체로 붙임. 전체 흐름 = 컴포넌트→RQ→queryFn→요청→(RLS+JOIN)DB→{data,error}→구조분해→RQ포장+캐시→컴포넌트 구조분해.**
 
