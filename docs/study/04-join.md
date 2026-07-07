@@ -1,0 +1,184 @@
+# 04. JOIN + 전체 데이터 흐름 (컴포넌트 ↔ DB)
+
+> 한 줄: **JOIN = 번호표(fk) 따라 다른 테이블 정보를 붙여오는 것. Supabase에선 `.select('*, 테이블(칸들)')` 한 줄.**
+
+---
+
+## 1. JOIN이 왜 필요한가 — 스냅샷(박제) 때문
+
+`purchases`(주문)는 상품 정보를 **일부 복사(박제)**해둔다:
+```
+product_id    ← 번호표 (products.id 가리킴 = fk)
+product_name  ← 박제! (그때 산 이름)
+price_krw     ← 박제! (그때 낸 가격)
+```
+
+**왜 박제?** 나중에 상품 가격이 바뀌어도 **과거 주문 영수증이 안 흔들리게** 🧾
+```
+[구매] 18,000원 → purchases에 18000 박제
+[3개월 뒤] 상품가 25,000원으로 인상 → products.price_krw = 25000
+→ 옛 주문 영수증: 박제된 18,000원 ✅ (products에서 live로 읽으면 25,000원 ❌ 대참사)
+```
+
+→ **거래 시점 정보(이름·가격)는 박제** → 그래서 영수증 화면엔 JOIN 필요 없음.
+→ **박제 안 된 최신 정보**(현재 사진 `images`, 현재 재고 `stock`, 주소 `slug`)가 필요할 때 → **JOIN**.
+
+---
+
+## 2. 번호표 → 코트 (fk → pk)
+
+```
+purchases.product_id  ──참조(references)──▶  products.id
+   fk (가리키는 번호표)                        pk (원본)
+```
+
+- **pk** = 원본, 자기 자리. (purchases의 pk는 `id`! product_id 아님 ⚠️)
+- **fk** = 그 pk를 가리키는 번호표.
+- 이 연결은 **테이블 만들 때 이미 걸림**(references). 쿼리 땐 **따라가기만** 함.
+
+⚠️ **자주 틀림: `product_id`는 pk가 아니라 fk다.** (pk는 `id`, 열쇠🔑 아이콘 붙은 것)
+
+---
+
+## 3. Supabase JOIN 문법
+
+```ts
+supabase
+  .from('purchases')                    // 메인 테이블 = purchases
+  .select('*, products(images, slug)')  // ★ 이 한 줄이 JOIN
+```
+
+문자열 뜯어보기 (⚠️ **따옴표 하나로 감싼 한 덩어리**):
+```
+'  *  ,  products( images, slug )  '
+   ▲  ▲     ▲          ▲
+   │  │   테이블      그 테이블의 칸
+   │  └ "그리고 또"
+   └ 메인(purchases) 전체 칸
+```
+- `*` = **메인 테이블(purchases)** 전체 칸 (products 전체가 아님!)
+- `products(images, slug)` = 연결된 products에서 **그 칸만**
+- `products(*)` = products 전체 칸
+
+⚠️ **이 JOIN은 메인이 purchases일 때 씀.** `useProducts.ts`는 `.from('products')`라 여기 안 씀 → **purchases 읽는 새 훅**(예: `usePurchases`)에 넣는다.
+
+---
+
+## 4. 결과 = 중첩 객체 (상자 안 상자 📦📦)
+
+```js
+{
+  id: "주문1",
+  product_id: "ABC-123",           // ┐
+  product_name: "버터 드롭 키링",   // │ purchases 것 (바깥 상자)
+  quantity: 2,                      // ┘
+  products: {                       // ← 조인해온 것 (안에 든 작은 상자)
+    images: ["사진.jpg"],           // ┐ products 것
+    slug: "butter-drop"             // ┘
+  }
+}
+```
+- 두 테이블에서 왔으니 **안 섞고**, products 것은 `products` 상자에 담아줌.
+
+### 꺼내 쓰기 — `.`(점) = "~의"
+```js
+p.product_name      // 이 주문의 이름 (박제)      → 바깥 바로
+p.products.images   // 이 주문의 products의 images (조인) → 상자 열고
+p.products.slug     // → /products/[slug] 링크에 사용
+```
+- `p` = 목록에서 `.map((p) => …)`로 꺼낸 **주문 하나**의 별명. (JS 문법, 백엔드 아님)
+
+---
+
+## 5. 실제 적용 = 훅 안에 그 select 한 줄
+
+```ts
+export const useMyPurchases = () => {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['purchases'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select('*, products(images, slug)')   // ← JOIN
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data
+    },
+  })
+}
+```
+```tsx
+{purchases.map((p) => (
+  <div key={p.id}>
+    <span>{p.product_name} · {p.quantity}개</span>   {/* 박제 */}
+    <img src={p.products.images[0]} />                {/* 조인: 현재 사진 */}
+    <Link href={`/products/${p.products.slug}`}>다시 보기</Link> {/* 조인: 주소 */}
+  </div>
+))}
+```
+
+---
+
+## 6. ⭐ 전체 데이터 흐름 (컴포넌트 → PostgreSQL → 컴포넌트)
+
+```
+[컴포넌트]  usePurchases() 호출
+     ↓
+[React Query]  queryFn(async 함수) 실행
+     ↓
+   주문서 조립: .from('purchases').select('*, products(...)')  (아직 안 감)
+     ↓
+   await → 요청 발사 🚀 (createClient에서 품은 anon key가 자동으로 실림)
+     ↓
+[Supabase 클라우드 / PostgreSQL]
+   ① RLS 검수: 정책 using 조건을 내 where에 AND로 붙여 행마다 통과 여부
+   ② 창고(테이블)에서 통과한 행 꺼냄
+   ③ JOIN: product_id(fk) 따라 products의 images·slug 붙임
+     ↓
+   supabase가 { data, error } 반환  (성공: error=null / 실패: data=null)
+     ↓
+[queryFn]  ① 구조분해: const { data, error } = await supabase…
+           → if (error) throw / return data
+     ↓
+[React Query]  받아서 포장 → { data, error, isLoading, ... } + 캐시에 저장
+   (데이터 내용을 바꾸는 "재가공"이 아니라, 상태 씌우기 + 캐시 관리)
+     ↓
+[컴포넌트]  ② 구조분해: const { data, error, isLoading } = usePurchases()
+           → isLoading? 로딩 UI / error? 에러 UI / data? 화면 렌더
+```
+
+### 헷갈리기 쉬운 2가지
+- **구조분해는 두 번, 다른 상자다:**
+  - ① queryFn 안(DB층): supabase가 준 `{ data, error }` (2칸)
+  - ② 컴포넌트(화면층): React Query가 준 `{ data, error, isLoading }` (더 많음)
+- **보내는 건 "데이터"가 아니라 "요청(주문서)".** 데이터는 DB가 돌려준다.
+- **`.from`은 테이블을 "만드는" 게 아니라 "메인으로 지정".** (만들기는 create table)
+
+### 이게 "상태 관리"
+React Query가 서버 데이터를 `data / error / isLoading`로 관리 + 캐시 → 다른 컴포넌트도 재요청 없이 캐시에서 씀.
+
+---
+
+## 🔑 오늘의 핵심 한 줄
+**JOIN = purchases 읽는 훅에서 `.select('*, products(images, slug)')` → fk 따라 products를 중첩 객체로 붙임. 전체 흐름 = 컴포넌트→RQ→queryFn→요청→(RLS+JOIN)DB→{data,error}→구조분해→RQ포장+캐시→컴포넌트 구조분해.**
+
+---
+
+## 🪜 "혼자 구현" 연습 사다리 (콜드로 빈 화면 X)
+
+빈 화면에서 바로 못 짜는 게 정상이야. 이 순서로 계단 오르기:
+
+1. **읽고 설명** (지금 단계 ✅) — 코드 보고 "왜 이래?" 답하기
+2. **빈칸 채우기** — 이 노트의 훅에서 `.select(____)` 한 줄만 가려놓고 채워보기
+3. **베끼며 타이핑** — useProducts.ts 보면서 usePurchases를 똑같이 쳐보기 (손이 문법 외움)
+4. **노트 보고 재현** — 이 노트만 보고 훅 처음부터 쳐보기
+5. **콜드 재현** — 아무것도 안 보고 쳐보기 (여기 오면 초중급 구현력)
+
+→ 지금은 1~2단계. **매번 한 계단씩만.** 이해가 이미 앞서 있어서 손은 생각보다 빨리 따라온다.
+
+---
+
+## ▶ 다음에 여기서 시작
+- 아직 안 판 것: **여러 행 JOIN**(주문 목록 전체), **UPDATE/DELETE**, **useMutation**(쓰기 훅), **집계**(count/sum).
+- 실전 적용: 진짜 **주문내역 페이지**(`usePurchases` + JOIN) 만들며 위 사다리 3~4단계 연습.

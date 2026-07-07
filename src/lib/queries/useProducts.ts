@@ -48,11 +48,13 @@ export const useProduct = (slug: string) => {
     queryKey: ['product', slug],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('products')
+        // 요청 주문서를 보냄
+        .from('products') // 테이블 지정하기
+        // ㄴ 만드는 건 create table (sql)
         .select('*')
         .eq('slug', slug)
         .eq('is_active', true) // published(공개)만 — 초안은 상세도 안 보이게
-        .single()
+        .single() // 활성인 상품 1개
       if (error) throw error
       return data as Product
     },
