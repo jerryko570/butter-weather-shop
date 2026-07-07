@@ -191,6 +191,41 @@ React Query가 서버 데이터를 `data / error / isLoading`로 관리 + 캐시
 
 → `lib/queries` = "React Query로 만든 훅들을 모아둔 폴더"지, 폴더 자체가 React Query인 건 아님.
 
+### supabase 클라이언트 3개 (`lib/supabase/`)
+두 통로가 쓰는 실제 클라이언트. 환경·키·RLS가 다르다.
+
+| 파일 | 어디서 | 키 | RLS |
+| --- | --- | --- | --- |
+| `client.ts` | 브라우저 (훅) | anon | ✅ 적용 |
+| `server.ts` | 서버 (쿠키 세션) | anon | ✅ 적용 |
+| `admin.ts` | 서버만 (시크릿 작업) | **service role** | ❌ 우회 |
+
+- `client.ts` = `createBrowserClient` — **커스텀 훅(useProducts 등)이 씀.** 브라우저는 localStorage.
+- `server.ts` = `createServerClient` + 쿠키 — 서버 컴포넌트·Route Handler. 서버는 쿠키로 세션 유지 → 그래서 client와 분리.
+- `admin.ts` = `createClient`(supabase-js) + **service role key** — Route Handler에서만. RLS 우회(예: `markPurchasePaid`). ⚠️ `NEXT_PUBLIC_` 아님 — 브라우저로 나가면 안 됨.
+- **두 통로 연결:** ① 커스텀 훅 → `client.ts` / ② Route Handler(시크릿) → `server.ts`·`admin.ts`.
+
+---
+
+## 8. 쿼리 빌더는 JS다 → `await`하면 SQL로 번역
+
+`.from('products')`는 **SQL이 아니라 JavaScript**(supabase-js 쿼리 빌더). SQL을 대신 써주는 도구. `await` 순간 SQL로 번역돼 DB로 발사된다.
+
+| JavaScript (쿼리 빌더) | → | SQL (번역 결과) |
+| --- | --- | --- |
+| `.from('products')` | → | `from products` |
+| `.select('*')` | → | `select *` |
+| `.eq('is_active', true)` | → | `where is_active = true` |
+| `.single()` | → | `limit 1` |
+
+```
+.from().select().eq()   → JS로 조립 중 (아직 SQL 아님, DB 안 감)
+        ↓ await
+"select * from products where is_active = true"  → SQL 번역 → 발사 🚀
+```
+
+→ 왜 빌더? SQL 직접 안 쓰고 JS로 편하게(오타·인젝션 위험↓). 속은 결국 SQL이라, SQL 알면 빌더가 잘 보인다.
+
 ---
 
 ## 🔑 오늘의 핵심 한 줄
