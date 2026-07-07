@@ -205,6 +205,40 @@ React Query가 서버 데이터를 `data / error / isLoading`로 관리 + 캐시
 - `admin.ts` = `createClient`(supabase-js) + **service role key** — Route Handler에서만. RLS 우회(예: `markPurchasePaid`). ⚠️ `NEXT_PUBLIC_` 아님 — 브라우저로 나가면 안 됨.
 - **두 통로 연결:** ① 커스텀 훅 → `client.ts` / ② Route Handler(시크릿) → `server.ts`·`admin.ts`.
 
+### service role 이란? (RLS 무시 마스터키)
+Supabase는 열쇠 2종을 준다:
+
+| 열쇠 | 성격 | RLS |
+| --- | --- | --- |
+| **anon key** | 공개키 (누구나 봄) | ✅ 적용 (문지기 통과해야) |
+| **service role key** | 비밀키 (절대 공개 X, 서버만) | ❌ **무시 (전능)** |
+
+- `service_role` = Postgres 역할인데 **RLS 정책에서 아예 면제**됨 → 모든 행 읽기/쓰기 가능.
+- ⚠️ 브라우저로 나가면 DB 전체가 털림 → **서버에서만**, 꼭 필요할 때만("칼").
+
+### server.ts vs admin.ts — "누구로서 행동하냐"가 다름
+둘 다 서버에서 돌지만 정체가 반대다.
+
+| | `server.ts` | `admin.ts` |
+| --- | --- | --- |
+| 키 | anon | **service role** |
+| 로그인 세션 | ✅ 쿠키로 읽음 | ❌ 없음 |
+| 누구로서? | **로그인한 그 사람** | **전능 관리자** |
+| RLS | ✅ 적용 | ❌ 우회 |
+
+**출입증 비유 🎫**
+- `client.ts` = 손님 출입증 (문지기 통과)
+- `server.ts` = 서버가 **로그인한 회원 출입증을 대신** 듦 → RLS 지키되 그 사람 권한
+- `admin.ts` = **만능 마스터키** → 문지기 무시, 다 열림
+
+**언제 뭘 쓰나**
+```
+server.ts: "내 주문목록" 보여주기 → 그 사람 세션 → RLS가 자기 것만 걸러줌 ✅ 안전
+admin.ts:  결제 웹훅에서 상태 'paid'로 → 손님 권한은 RLS가 막음 → service role로 우회
+           (이미 검증 끝난 신뢰 작업이라 우회 OK)
+```
+→ 기본은 `server.ts`(RLS 지킴), **꼭 뚫어야 할 신뢰 작업에만** `admin.ts`. 남발하면 RLS 보안이 무의미해짐.
+
 ---
 
 ## 8. 쿼리 빌더는 JS다 → `await`하면 SQL로 번역
