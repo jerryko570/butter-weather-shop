@@ -164,6 +164,33 @@ payment.mutate(createdPurchase) → 결제창 → (성공) 팝업
 
 ---
 
+## ⭐ 내 설명 (교정본) — 10단계로 직접 엮기 (2026-07-08 복습)
+
+> 스스로 전체 흐름을 말로 재현한 것. "노트 보고 재현" 단계 통과 = 95점.
+> 교정 2군데: ⑤ mutate가 실행(useMutation 재실행 아님) / ⑩ 팝업은 결제 성공 후.
+
+```
+1. usePurchase 커스텀 훅 생성
+2. import { usePurchase }  — 구조분해로 "함수 자체" 꺼냄 (실행 X)
+3. const purchase = usePurchase()  — 도구가 필요해서 실행(괄호O), 결과 꾸러미를 purchase에 저장
+4. const handlePurchase = () => {...}  — 화살표 함수 정의, 버튼 클릭 시(onClick) 실행 → purchase.mutate(구매내용)
+5. mutate()가 배선된 postPurchase를 발사 (⚠️ useMutation 재실행 아님, 이미 3번에서 배선됨)
+6. postPurchase(input): input = mutate 인자1(사용자가 입력한 구매 데이터)
+7. await fetch → '/api/purchases'로 body에 실어 전송
+8. 실패(!res.ok) → throw Error → isError
+9. 성공 → return res.json() → React Query가 자동으로 onSuccess(반환값) 실행
+       → createdPurchase = res.json() 값 (RQ가 주입)
+10. onSuccess → payment.mutate(createdPurchase) 결제창
+       → 결제 성공 → (안쪽) onSuccess → trackEvent('purchase') + setShowSuccess(true) 팝업
+```
+
+### 헷갈렸던 2가지 (다시)
+- **⑤** `mutate()`는 이미 배선된 `postPurchase`를 **실행**시키는 것. `useMutation()`을 다시 부르는 게 아님.
+- **⑩** `trackEvent` + `setShowSuccess(팝업)`은 **주문 성공이 아니라 결제까지 성공한 뒤**(안쪽 onSuccess)에 실행. onSuccess가 2겹(주문→결제 / 결제→팝업).
+
+---
+
 ## ▶ 다음에 여기서 시작
 - 아직 안 판 것: **캐시 무효화**(`invalidateQueries` — 쓰기 후 목록 자동 갱신), **update/delete** 뮤테이션, **낙관적 업데이트**.
 - `useAdminProducts.ts`에 delete 뮤테이션 있음 → 그걸로 update/delete + 캐시 무효화 실습.
+- 실습 목표: 이 10단계를 **노트 안 보고** 빈 화면에 타이핑(사다리 5단계).
