@@ -13,6 +13,7 @@ export interface Product {
   detail_images: string[] // 상세페이지 설명 이미지 (세로로 길게 쌓이는 스마트스토어식)
   category: string | null
   tags: string[]
+  options: string[] // 선택지 목록 (예: ['그린','블루']). 없으면 빈 배열
   status: ProductStatus // 판매 상태 (active / sold_out 등) — 공개 여부와는 별개
   is_active: boolean // 공개(노출) 여부. RLS·훅에서 published 기준으로 쓰는 플래그
   created_at: string
