@@ -93,6 +93,53 @@ export async function POST(request) {
 
 ---
 
+## 6. 구조 5단계 (커스텀 훅 → API)
+
+```
+[1 발사]  const purchase = usePurchase() (배선) → 버튼 클릭 → mutate(데이터)
+            → React Query가 배선된 postPurchase(input) 실행
+[2 포장]  body: JSON.stringify(input)  객체 → 문자열 📦 → fetch 전송
+   ─────── 네트워크 ───────
+[3 서버]  method:POST → route.ts의 POST 함수 → request.json() 풀기 📭
+            → 검증(2차 방어선) → createPurchase → DB
+   ─────── 네트워크 ───────
+[4 응답]  res.ok?  실패(400/500)→ {error} 꺼내 throw  /  성공(201)→ res.json() 반환
+[5 마무리] React Query → onSuccess(createdPurchase) 실행  /  실패면 isError
+```
+
+- **에러 처리 2층:** 서버(route.ts)가 status(201/400/500)를 **정하고**, 클라(postPurchase)가 `res.ok`로 **읽고 반응**(throw/return). 다리 = status 코드.
+- **res.json() 두 갈래:** 실패 → `{error}`만 꺼내 throw / 성공 → 통째로 return. 파싱은 둘 다 같음.
+
+---
+
+## 7. ⭐ 4파일 왕복 트레이스 (2026-07-10 복습 콜드 재현)
+
+> page → hook → route → service → supabase → 되돌아오는 전체를 파일 넘나들며 재현.
+
+```
+📄 page.tsx              mutate(주문데이터) 발사
+      ↓
+📄 usePurchase.ts        postPurchase: input 주입 → JSON.stringify → fetch
+      ↓ ─── 네트워크 ───
+📄 route.ts (POST)       request.json() 풀기 → 2차 검증 → createPurchase(body) 호출
+      ↓
+📄 purchase.service.ts   createPurchase: createClient()(서버 supabase 리모콘)
+                         → supabase.from('purchases').insert(...) → return data (or throw)
+      ↑ 결과를 route.ts로 돌려줌 (답장 아님!)
+📄 route.ts              NextResponse.json(purchase, 201) ← 여기서 답장 포장 (실패면 catch→500)
+      ↓ ─── 네트워크 ───
+📄 usePurchase.ts        res.ok? 실패 throw / 성공 return res.json()
+      ↓
+📄 page.tsx              onSuccess(createdPurchase) → payment.mutate → (결제 성공) 팝업
+```
+
+### 헷갈렸던 포인트 (교정)
+- **답장(`NextResponse.json`)은 `createPurchase`가 아니라 `route.ts`가 만든다.** createPurchase는 supabase에 insert하고 결과를 route.ts로 **return**만 함. 답장 포장은 route.ts.
+- **route.ts엔 supabase가 안 보임** — `createPurchase`에 **위임**하기 때문. 실제 `supabase.insert`는 `purchase.service.ts` 안. (route.ts=접수처 / createPurchase=주방 / supabase=창고, 3층)
+- **route.ts = 리액트 아니라 "서버" 코드.** 진짜 접근 보안(누구 것/로그인)은 route.ts가 아니라 **RLS**가 최종으로 지킴. route.ts는 "양식 검증".
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
