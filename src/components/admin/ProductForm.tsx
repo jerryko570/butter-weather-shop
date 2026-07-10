@@ -149,6 +149,7 @@ function FormBody({
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean),
+      options: [], // TODO: 옵션 입력 UI 추가 시 연결. 지금은 빈 배열
       status: status as ProductInput['status'],
       is_active: isActive,
       images,
