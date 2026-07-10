@@ -1,48 +1,33 @@
-/**
- * ProductDetailPage — 상품 상세 화면 (nutats 레퍼런스 레이아웃)
- *
- * 1. 재료 준비  : 훅 실행해서 변수에 담기 (slug · router · 상품데이터 · 주문도구 · 상태값)
- * 2. 관문       : 로딩/에러 거르기 → 통과하면 product가 확실히 존재한다
- * 3. 동작 정의  : 클릭 시 발동할 함수 미리 만들기 (주문 전송 / 팝업 닫기)
- * 4. 화면 그리기:
- *      상단 2단  → 좌: 메인이미지 + 썸네일 갤러리 / 우: 정보블록(이름·가격·수량·주문)
- *      하단 탭   → DETAIL(상세이미지) · SHIPPING(배송·교환반품 안내)
- *      성공 팝업
- */
-
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-// useParams: 주소에서 값 꺼내기(읽기) / useRouter: 페이지 이동
 import Image from 'next/image'
-import { useProduct } from '@/lib/queries/useProducts' // 상품 조회 (읽기 전용)
-import { usePurchase } from '@/hooks/usePurchase' // 주문 전송 (쓰기 전용, 함수 자체를 import)
-import { usePayment } from '@/hooks/usePayment' // PortOne 결제창 + 서버 검증
-import { formatKRW } from '@/lib/utils/formatPrice' // 가격 포맷팅
+import { useProduct } from '@/lib/queries/useProducts'
+import { usePurchase } from '@/hooks/usePurchase'
+import { usePayment } from '@/hooks/usePayment'
+import { formatKRW } from '@/lib/utils/formatPrice'
 import { useEffect, useState } from 'react'
-import Text from '@/components/ui/Text/Text' // 공통 타이포 컴포넌트 (as로 태그+스타일 결정)
+import Text from '@/components/ui/Text/Text'
 import { useT } from '@/hooks/useT'
 import { localizedName, localizedDescription } from '@/lib/i18n/dictionary'
-import { trackEvent } from '@/lib/utils/analytics' // 커스텀 분석 이벤트 (Supabase + PostHog)
+import { trackEvent } from '@/lib/utils/analytics'
 
 type Tab = 'detail' | 'shipping'
 
 export default function ProductDetailPage() {
-  // 1. 재료 준비
-  const { slug } = useParams<{ slug: string }>() // 주소에서 어떤 상품인지(slug) 꺼내기
-  const router = useRouter() // router.push('/')로 페이지 이동
-  const { locale } = useT() // 현재 언어 (상품명·설명 현지화)
-  const { data: product, isLoading, error } = useProduct(slug) // slug로 상품 조회 (useQuery 꾸러미)
+  const { slug } = useParams<{ slug: string }>()
+  const router = useRouter()
+  const { locale } = useT()
+  const { data: product, isLoading, error } = useProduct(slug)
 
-  const purchase = usePurchase() // 주문 도구 꾸러미. ()로 "실행한 결과"를 담는다 (함수 자체 X)
-  const payment = usePayment() // 결제 도구 꾸러미. 주문 생성 후 PortOne 결제창을 띄운다
+  const purchase = usePurchase()
+  const payment = usePayment()
 
   const [quantity, setQuantity] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [selectedImage, setSelectedImage] = useState(0) // 갤러리에서 보고 있는 이미지 인덱스
-  const [activeTab, setActiveTab] = useState<Tab>('detail') // 하단 탭
+  const [selectedImage, setSelectedImage] = useState(0)
+  const [activeTab, setActiveTab] = useState<Tab>('detail')
 
-  // 상품 상세 조회 이벤트 — 상품이 로드되면 발생 (PostHog 퍼널: pageview → product_view → purchase)
   useEffect(() => {
     if (!product) return
     trackEvent('product_view', {
@@ -53,10 +38,6 @@ export default function ProductDetailPage() {
     })
   }, [product])
 
-  // 2. 관문 — 여기서 거르면 아래부터는 product가 있다는 게 보장됨
-  // min-h-screen으로 화면 높이만큼 자리를 미리 예약한다.
-  // 이렇게 안 하면 로딩 중엔 키가 작다가 데이터가 뜰 때 페이지가 길어지면서
-  // 푸터가 아래로 점프(CLS)한다.
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center py-20">
@@ -77,10 +58,8 @@ export default function ProductDetailPage() {
     )
   }
 
-  // 3. 동작 정의
-  // 주문 버튼 클릭 → ① 주문 생성(pending) → ② PortOne 결제창 + 서버 검증 → ③ 검증 통과 시 성공 팝업
   const handlePurchase = () => {
-    // ① 주문을 먼저 서버에 만든다 (payment_id 발급, 상태 pending)
+    // mutate(데이터) 발사!
     purchase.mutate(
       {
         product_id: product.id,
@@ -90,12 +69,9 @@ export default function ProductDetailPage() {
         price_usd: product.price_usd ? product.price_usd * quantity : null,
       },
       {
-        // ② 주문이 만들어지면 그 주문(payment_id 포함)으로 결제창을 띄운다
         onSuccess: (createdPurchase) => {
           payment.mutate(createdPurchase, {
-            // ③ 결제창 통과 + 서버 검증까지 끝나야 진짜 성공
             onSuccess: () => {
-              // 결제 검증 통과 → 전환 이벤트 (PostHog 퍼널 마지막 단계)
               trackEvent('purchase', {
                 product_id: product.id,
                 product_name: product.name,
@@ -110,7 +86,6 @@ export default function ProductDetailPage() {
     )
   }
 
-  // 성공 팝업 닫고 홈으로 → 주문 사이클 마무리
   const handleCloseSuccess = () => {
     setShowSuccess(false)
     router.push('/')
@@ -119,7 +94,6 @@ export default function ProductDetailPage() {
   const images = product.images?.length ? product.images : []
   const isSoldOut = product.status === 'sold_out' || product.stock <= 0
 
-  // 4. 화면 그리기
   return (
     <div>
       {/* ── 상단 2단: 좌 갤러리 / 우 정보블록 ── */}
@@ -430,7 +404,6 @@ export default function ProductDetailPage() {
   )
 }
 
-// ── 배송/교환 안내 블록 (라벨-값 행 묶음) ──
 function ShippingBlock({
   title,
   rows,
@@ -457,3 +430,189 @@ function ShippingBlock({
     </div>
   )
 }
+
+/* ════════════════════════════════════════════════════════════════
+   ▌ 코드 + 주석 ─ 설명 달린 학습용 (실행 X, 읽기용)
+   ════════════════════════════════════════════════════════════════
+
+   ProductDetailPage — 상품 상세 화면 (nutats 레퍼런스 레이아웃)
+
+   1. 재료 준비   : 훅 실행해서 변수에 담기 (slug·router·상품데이터·주문도구·상태값)
+   2. 관문        : 로딩/에러 거르기 → 통과하면 product가 확실히 존재
+   3. 동작 정의   : 클릭 시 발동할 함수 미리 만들기 (주문 전송 / 팝업 닫기)
+   4. 화면 그리기 :
+        상단 2단  → 좌: 메인이미지 + 썸네일 갤러리 / 우: 정보블록(이름·가격·수량·주문)
+        하단 탭   → DETAIL(상세이미지) · SHIPPING(배송·교환반품 안내)
+        성공 팝업
+
+
+   ─────────────────────────────────────────────
+   ★ 이 파일을 관통하는 핵심: 배선(wiring) vs 실행(trigger)
+   ─────────────────────────────────────────────
+     usePurchase() / usePayment() 호출  →  "배선"  (postPurchase를 mutate에 연결. 여기서 끝)
+     purchase.mutate(데이터)            →  "실행"  (배선된 postPurchase를 방아쇠처럼 당김)
+     ※ mutate는 useMutation을 "다시 실행"하는 게 절대 아님. 이미 연결된 함수를 부를 뿐.
+
+
+   ─────────────────────────────────────────────
+   import 구역 (누가 뭘 하는지)
+   ─────────────────────────────────────────────
+   useParams   : 주소에서 값 꺼내기(읽기)  /  useRouter : 페이지 이동
+   useProduct  : 상품 조회 (읽기 전용, useQuery)
+   usePurchase : 주문 전송 (쓰기 전용, useMutation — 함수 자체를 import)
+   usePayment  : PortOne 결제창 + 서버 검증
+   formatKRW   : 가격 포맷팅
+   Text        : 공통 타이포 컴포넌트 (as로 태그+스타일 결정)
+   localizedName / localizedDescription : 현재 언어에 맞는 이름·설명 고르기
+   trackEvent  : 커스텀 분석 이벤트 (Supabase + PostHog)
+
+
+   ─────────────────────────────────────────────
+   1. 재료 준비 (훅 → 변수)
+   ─────────────────────────────────────────────
+   const { slug } = useParams<{ slug: string }>()
+   // · 주소에서 어떤 상품인지(slug) 꺼냄
+
+   const router = useRouter()          // router.push('/')로 페이지 이동
+   const { locale } = useT()           // 현재 언어 (상품명·설명 현지화)
+   const { data: product, isLoading, error } = useProduct(slug)
+   // · slug로 상품 조회 → useQuery 꾸러미 (data를 product로 이름 바꿔 꺼냄)
+
+   const purchase = usePurchase()
+   // · 주문 도구 꾸러미. "지금 도구를 받아야 하니까" ()로 실행 → 결과를 담는다 (함수 자체 X)
+   // · ★ 이 호출 = useMutation이 postPurchase를 mutate에 "배선(연결)"하는 지점 → 여기서 배선 끝
+   const payment = usePayment()
+   // · 결제 도구 꾸러미. 주문 생성 후 PortOne 결제창을 띄운다
+
+   const [quantity, setQuantity] = useState(1)
+   const [showSuccess, setShowSuccess] = useState(false)
+   const [selectedImage, setSelectedImage] = useState(0)   // 갤러리에서 보는 이미지 인덱스
+   const [activeTab, setActiveTab] = useState<Tab>('detail') // 하단 탭
+
+   useEffect(() => {
+     if (!product) return
+     trackEvent('product_view', { ...product 정보 })
+   }, [product])
+   // · trackEvent() = 사용자 "행동"을 분석에 기록하는 함수
+   //     'product_view'   = 무슨 행동인지 (이 상품 상세를 봤다)  → 퍼널 분석용
+   //     { product_id … } = 그 행동의 상세 정보(누가·무엇을·얼마)
+   // · 상품이 로드되면 발생 (PostHog 퍼널: pageview → product_view → purchase)
+   // · [product] 의존성 → product가 생기거나 바뀔 때만 실행
+
+
+   ─────────────────────────────────────────────
+   2. 관문 (로딩/에러 거르기)
+   ─────────────────────────────────────────────
+   if (isLoading) return <로딩 화면 min-h-screen>
+   if (error || !product) return <에러 화면 min-h-screen>
+   // ★ 여기서 걸러지면 아래부터는 product가 "확실히 있다"고 보장됨
+   //   (그래서 이후 product.xxx 를 옵셔널 체이닝 없이 써도 안전)
+   //
+   // ★ 왜 min-h-screen?
+   //   화면 높이만큼 자리를 미리 예약. 안 그러면 로딩 땐 키가 작다가
+   //   데이터 뜰 때 페이지가 길어지며 푸터가 아래로 점프(CLS)한다.
+
+
+   ─────────────────────────────────────────────
+   3. 동작 정의 (클릭 시 발동할 함수)
+   ─────────────────────────────────────────────
+   const handlePurchase = () => {           // 주문 버튼 클릭 핸들러
+     purchase.mutate(주문데이터, {           // ★ 배선된 postPurchase를 "실행"(방아쇠). 재-배선 아님
+       onSuccess: (createdPurchase) => {     // ① 주문 생성 성공(payment_id 발급, 상태 pending)
+         payment.mutate(createdPurchase, {   // ② 그 주문으로 PortOne 결제창 + 서버 검증
+           onSuccess: () => {                // ③ 결제창 통과 + 검증까지 끝나야 "진짜 성공"
+             trackEvent('purchase', {...})   //    전환 이벤트 (퍼널 마지막 단계)
+             setShowSuccess(true)            //    성공 팝업 띄우기
+           },
+         })
+       },
+     })
+   }
+   // ★ 3단 중첩 흐름: 주문 생성 → 결제·검증 → 성공 팝업
+   //   각 단계의 onSuccess가 다음 단계를 "연쇄"로 부른다 (앞이 성공해야 뒤가 실행)
+   //   price_usd 는 값 있으면 quantity 곱, 없으면 null
+   //
+   // ★ createdPurchase 값은 어디서 오나? (usePurchase.ts와 연결)
+   //   1) postPurchase 안 return res.json()  → 서버가 만든 주문 데이터를 반환
+   //   2) React Query가 "성공"으로 판단 (isSuccess = true, data 채움)
+   //   3) 그 반환값을 인자로 onSuccess(반환값) 실행
+   //   4) 그 반환값이 여기 onSuccess의 createdPurchase 로 들어옴 (RQ가 자동 연결)
+   //   5) 그걸 payment.mutate(createdPurchase) 로 넘겨 결제창으로 이어짐
+   //   → 즉 "우리가 직접 대입"하는 게 아니라, mutationFn의 반환값을 RQ가 배달해 줌
+
+   const handleCloseSuccess = () => {        // 성공 팝업 닫고 홈으로
+     setShowSuccess(false)
+     router.push('/')                        // 주문 사이클 마무리
+   }
+
+   const images = product.images?.length ? product.images : []
+   // · 이미지 있으면 그 배열, 없으면 빈 배열 (아래 갤러리에서 안전하게 map)
+   const isSoldOut = product.status === 'sold_out' || product.stock <= 0
+   // · 품절 상태거나 재고 0 이하면 true → 버튼 잠금
+
+
+   ─────────────────────────────────────────────
+   4. 화면 그리기 (JSX 구조 지도)
+   ─────────────────────────────────────────────
+   <div>
+     [상단 2단 grid] lg에서 좌우 2칸
+       ├ 좌: 갤러리
+       │   · 메인 이미지 = images[selectedImage] (없으면 회색 원 placeholder)
+       │   · 썸네일 = images.length > 1 일 때만 노출
+       │       클릭 → setSelectedImage(i) → 메인 이미지 교체
+       │       선택된 썸네일만 ring 강조, 나머지는 opacity 낮춤
+       └ 우: 정보블록
+           · 카테고리 → 이름(localizedName) → 보조이름(ko면 영문 / en이면 국문)
+           · 가격 formatKRW
+           · 설명(localizedDescription) — 있을 때만
+           · 수량: − 버튼 Math.max(1, q-1) / + 버튼 Math.min(stock, q+1) → 재고 초과·0 방지
+           · Total = price_krw × quantity
+           · 주문 버튼 <button onClick={handlePurchase}>
+               disabled = purchase.isPending || payment.isPending || isSoldOut
+               라벨 = 품절? 'Sold Out' : 주문중? '주문 생성 중...'
+                      : 결제중? '결제 진행 중...' : 'Buy It Now'
+           · 에러 = purchase.isError || payment.isError 일 때
+               (purchase.error ?? payment.error)?.message 표시
+
+     [하단 탭 섹션]
+       · 탭 네비: detail / shipping → 클릭 시 setActiveTab
+       · detail  → detail_images 있으면 이미지 나열
+                   없고 설명 있으면 설명 텍스트, 둘 다 없으면 "준비 중"
+       · shipping→ <ShippingBlock> 2개(배송 안내 / 교환·반품) + 핸드메이드 유의 문구
+
+     [주문 성공 팝업] showSuccess === true 일 때만
+       · 체크 아이콘 + "주문 완료" + 상품×수량 + 합계
+       · 확인 버튼 → handleCloseSuccess (팝업 닫고 홈 이동)
+   </div>
+
+   ── ShippingBlock (하단 helper 컴포넌트) ──
+   · props: title(제목) + rows([라벨, 값][] 배열)
+   · <dl> 안에 rows.map 으로 라벨-값 행을 반복 출력
+
+
+   ─────────────────────────────────────────────
+   5. 헷갈릴 때 메모
+   ─────────────────────────────────────────────
+   · 배선 vs 실행 (이 파일 최대 함정)
+       usePurchase() 호출     = 배선(연결) 완료 — 렌더마다 여기서 한 번
+       purchase.mutate(data)  = 배선된 postPurchase 실행 — 버튼 누를 때마다
+       → mutate는 useMutation을 다시 만드는 게 아니라, 이미 연결된 함수의 방아쇠
+
+   · usePurchase() 에 () 붙인 이유
+       여긴 "실행 결과 꾸러미"(mutate·isPending·isError…)를 쓰려는 것
+       ↔ usePurchase.ts 안 mutationFn: postPurchase 는 () 없이 "함수 자체" 등록
+
+   · onSuccess의 인자(createdPurchase)는 내가 넣는 게 아님
+       mutationFn(postPurchase)의 return 값을 React Query가 자동으로 넘겨줌
+
+   · 3단 onSuccess 중첩 = "앞 단계 성공 → 다음 단계" 연쇄
+       주문 생성 → 결제·검증 → 팝업. 중간에 실패하면 뒤로 안 감
+
+   · data: product 처럼 : 로 이름 바꾸기 = 구조분해 별칭(rename)
+
+   · 관문 이후엔 product 존재 보장 → product.xxx 안전하게 접근
+
+   · min-h-screen = 레이아웃 점프(CLS) 방지용 높이 예약
+
+   · Math.max(1, …) / Math.min(stock, …) = 수량 하한 1, 상한 재고
+   ════════════════════════════════════════════════════════════════ */

@@ -1,54 +1,67 @@
-/**
- * usePurchase.ts — 주문을 서버로 보내는 다리
- *
- *   postPurchase : 실제로 서버에 주문을 쏘는 함수 (fetch)
- *   usePurchase  : postPurchase를 useMutation에 연결한 커스텀 훅
- *
- * 흐름: mutate(주문데이터) → postPurchase 실행 → fetch로 전송 → 응답 반환
- * 네트워크라 시간이 걸려서 await로 기다리고, 그동안 isPending = true.
- *
- * useMutationdms mutate와 postPurchase를 연결해두고, 내가 mutate(주문데이터)를 부르면
- * 그 데이터가 postPurchase의 input으로 전달되서 fetch로 서버에 보내고 await로 응답을 받아온다.
- */
+/* ────────────────────────────────────────────────────────────
+   usePurchase.ts — 주문을 서버로 보내는 훅  (브라우저 = 거는 쪽)
+     ↔ 짝: route.ts (서버 = 받는 쪽)
+
+   · postPurchase : fetch로 실제 주문을 쏘는 함수
+   · usePurchase  : postPurchase를 useMutation에 연결한 커스텀 훅
+
+   흐름:  mutate(주문데이터) → postPurchase(fetch POST) → route.ts
+          → createPurchase(DB에 씀) → 응답 → res.json() → onSuccess
+   ──────────────────────────────────────────────────────────── */
 
 import { useMutation } from '@tanstack/react-query'
 import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
-// 서버에 주문을 보내고 결과를 받아오는 함수
 async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {
   const res = await fetch('/api/purchases', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input), // input = mutate(주문데이터)로 들어온 값. 함수 인자로 넘겨준다
-    // mutate(데이터) 값이 fetch body에 실어 보냄
+    method: 'POST', // 쓰기 요청
+    headers: { 'Content-Type': 'application/json' }, // 본문이 JSON임을 알림
+    body: JSON.stringify(input), // 객체 → 문자열 (네트워크는 문자만 감)
   })
 
-  // 응답이 와야 다음 줄로 넘어감. 실패하면 에러를 던져 isError로 잡히게 한다.
+  // fetch는 4xx·5xx도 throw 안 함 → 실패는 직접 던져야 isError로 잡힘
   if (!res.ok) {
     const { error } = await res.json()
-    throw new Error(error ?? '주문에 실패했습니다.')
+    throw new Error(error ?? '주문에 실패했습니다.') // 서버 메시지 없으면 기본 문구
   }
 
-  return res.json()
-  // 서버에 POST -> 응답(res) 받음. 성공이면 데이터를 반환함.
-  // res: 서버가 보낸 상태코드, 헤더 -> 한번 더 res.json()으로 꺼내야 결과 데이타가 나옴
-  // res.json: 진짜 데이터(json)을 꺼내는 것
-  // reactQuery: throw 없이 무사히 돌려줌 -> 성!공! -> onSuccess를 불러줌
+  return res.json() // 문자열 → 객체 (풀어서 반환) → onSuccess
 }
 
-// postPurchase를 mutationFn에 "등록"만 해두는 훅 (실행 X, 연결 O)
-// → 나중에 mutate가 불리는 순간 postPurchase가 실행된다.
 export const usePurchase = () => {
   return useMutation({
-    // useMutation은 실행이 아닌 연결(배선)만 함
-    mutationFn: postPurchase, // ()가 없으니 호출이 아니라 함수 자체를 넘김. mutate()를 불러야 실행 됨
+    mutationFn: postPurchase, // () 없이 "함수 자체"만 등록 → mutate() 부를 때 실행됨
   })
 }
 
-/**
- * 전체 흐름
- *   [페이지 진입] const purchase = usePurchase()   // useMutation 꾸러미 생성
- *   [버튼 클릭]   purchase.mutate(주문데이터)        // → postPurchase → fetch
- *   [성공]        onSuccess → 성공 팝업 표시
- *   [실패]        throw → isError → 에러 메시지 표시
- */
+/* ────────────────────────────────────────────────────────────
+   헷갈릴 때 메모
+   ────────────────────────────────────────────────────────────
+   · useQuery(읽기/GET)   → 화면 뜨면 알아서 조회
+     useMutation(쓰기/POST) → mutate() 부를 때만 실행 (주문·삭제·수정)
+
+   · 함수 vs 함수()
+       mutationFn: postPurchase   → 넘김 (나중에 실행)
+       onClick={handleClick}      → 넘김 (클릭 때 실행)
+       onClick={handleClick()}    → 렌더 때 바로 실행돼 버림 ← 실수 주의
+
+   · 연결 vs 실행
+       mutationFn: postPurchase   → 지금은 "배선"만
+       mutate(데이터)             → 실제 실행 (버튼 누를 때)
+
+   · res vs res.json()
+       res        → 봉투 (상태코드·헤더)          ← ok는 () 없음, 저장된 값
+       res.json() → 봉투 열어 꺼낸 데이터         ← () 있음, 함수 실행
+
+   · JSON.stringify  ↔  request.json()   (정반대 짝)
+       stringify      = 객체 → 문자열 (보낼 때, 브라우저)
+       request.json() = 문자열 → 객체 (받을 때, 서버 route.ts)
+
+   · async / await
+       await = 응답 올 때까지 기다림 → 그 사이 isPending = true
+
+   · ?? (널 병합)
+       error ?? '기본문구'  = error 있으면 그것, null/undefined면 기본문구
+
+   · 꾸러미: useMutation은 { mutate, isPending, isError, isSuccess, data } 반환
+   ──────────────────────────────────────────────────────────── */
