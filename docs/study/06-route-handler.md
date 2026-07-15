@@ -367,6 +367,124 @@ const res = await fetch('/api/purchases', { method, headers, body })
 
 ---
 
+## 12. ⭐ `createPurchase` = "기계 한 대" + 세 곳이 똑같은 모양 (2026-07-15 복습)
+
+> 헷갈렸던 질문: *"route.ts는 왜 여기서 `createPurchase`를 부르지?"* → 원인은 위임/재사용 개념이 아니라, **`createPurchase`가 뭔지**가 아직 안 잡혀서였음. 그래서 "기계" 그림부터 다시.
+
+### ① `createPurchase` = 일 하나 하는 기계 (이름 그대로)
+
+```
+create  Purchase   =  구매를  만드는  기계
+만들다   구매
+```
+
+```
+        ┌─────────────────────────┐
+body →  │     createPurchase       │  → 저장된 주문 1건
+(주문)   │  (DB에 insert 하는 기계)  │    (id·payment_id 붙은 완성본)
+        └─────────────────────────┘
+        넣는 것                        나오는 것
+```
+- **넣는 것** = `body`(손님 주문) / **하는 일** = supabase `insert` / **나오는 것** = 저장된 주문(`return data`).
+
+### ② route.ts 한 줄 = "기계에 넣고 → 나온 걸 담기"
+
+```ts
+const purchase = await createPurchase(body)
+//    ↑ 나온 것        ↑ 기계 켜기      ↑ 넣는 것
+```
+
+### ③ ★ 세 곳이 전부 **똑같은 모양** (`const 변수 = 함수(인자)`)
+
+```ts
+const purchase = usePurchase()               // 넣는 것 없음 → 나온 꾸러미 담기
+const res      = await fetch(주소, 설정)       // 주소·설정 넣기 → 나온 응답 담기
+const purchase = await createPurchase(body)   // body 넣기 → 나온 주문 담기   ← 똑같은 모양!
+```
+- 이름·역할만 다를 뿐 **전부 "넣고 → 나온 걸 변수에 담기"** 한 패턴. (섹션 11 ①의 `const 변수 = 함수(인자)` 원칙과 같음)
+- 그래서 "route가 왜 부르지?"의 답 = route는 검증까지만 하고, **DB 넣는 일은 createPurchase 기계에 넘겨(위임)** 나온 결과를 `purchase`에 담는 것.
+
+---
+
+## 13. ⭐ `createPurchase` 기계 안 — 한 줄씩 (crypto·insert·쿼리체인) (2026-07-15 복습)
+
+> 섹션 12에서 "createPurchase = 기계 한 대"를 잡았으니, 이번엔 그 **기계 안**을 한 줄씩 열어봄.
+
+### ① `const paymentId = crypto.randomUUID()` — 고유번호 뽑기
+
+```
+crypto . randomUUID ()
+  🧰      🔧         ⚡
+ 상자    안의 함수    켜기
+```
+- **`crypto`** = 브라우저·서버 내장 **도구상자** 🧰 (함수 아님! `Math`처럼 원래 있는 것). 혼자 `crypto()` 못 켬.
+- **`.randomUUID()`** = 상자 **안의 함수** ⚡. `()` 켜면 → **세상에 하나뿐인 랜덤 고유 아이디** 나옴 (`"a3f8c1e2-..."`).
+- **구분 팁: 뒤에 `()`가 붙는 게 함수.** `crypto`(상자, () ❌) / `randomUUID()`(함수, () ⭕).
+- 이건 **손님이 보낸 값이 아니라 서버가 발급하는 값** — 접수 순간 서버가 직접 번호표를 뽑음.
+
+### ② `.insert({ key: value })` — DB 칸에 값 넣기
+
+```ts
+.insert({
+  payment_id: paymentId,        // DB 칸이름 ← 넣을 값(방금 뽑은 변수)
+  product_id: input.product_id, // DB 칸이름 ← 손님이 보낸 값
+  status:     'pending',        // DB 칸이름 ← 고정값 "결제대기"
+})
+```
+- **왼쪽(key) = DB 칸 이름** — 실제 `purchases` 테이블 컬럼과 **글자가 똑같아야** 저장됨(오타 시 에러). DB 스키마가 정함(못 바꿈).
+- **오른쪽(value) = 넣을 값** — 내 변수/입력값. 
+- ⚠️ **왼쪽·오른쪽은 다른 이름:** `payment_id`(snake_case, DB 칸) ≠ `paymentId`(camelCase, JS 변수). 헷갈리지 말 것.
+- `insert({...})`의 `{ }` 하나 = **DB `purchases` 테이블의 한 줄(행).**
+- 실DB 확인(2026-07-15 Schema Visualizer): `purchases` 맨 아래 `payment_id text`(nullable, 유니크 인덱스) 칸에 이 값이 들어감.
+
+### ③ `.select().single()` — 넣은 걸 도로, 객체 하나로
+
+```
+supabase . from('purchases') . insert({...}) . select() . single()
+  🎛️          어느 테이블         이 데이터        도로 줘    한 줄로
+```
+- **`.from('purchases')`** = 어느 테이블? (products·orders 여럿 중 지정)
+- **`.insert({...})`** = "저장(넣기)" — DB에 새 줄로 넣음. (전송 ❌, 저장 ⭕)
+- **`.select()`** = **넣은 줄을 도로 받기.** insert만 하면 "완료"만 주고 뭘 넣었는진 안 줌. `.select()`가 있어야 **DB가 자동 생성한 값**(`id`, `created_at`)까지 붙은 완성본을 받음.
+- **`.single()`** = 배열 벗기고 **객체 하나로.**
+  ```
+  .select()          → [{ id, payment_id, ... }]   ← 배열 (여러 줄일 수 있어서)
+  .select().single() →  { id, payment_id, ... }    ← 객체 (알맹이만)
+  ```
+  객체라야 나중에 `data.id`로 바로 꺼냄 (배열이면 `data[0].id`로 번거로움).
+
+### ③-1 ⭐ 왜 점(.)으로 이어붙여야 하나 — "주문서 한 장"
+
+> 헷갈렸던 질문: *"각각 왜 필요한지는 알겠는데, **왜 하필 체인으로** 이어야 하지?"*
+
+- `.from()`·`.insert()`·`.select()`·`.single()`은 **각각 따로 DB에 갔다 오는 게 아님.** **한 장의 주문서에 조건을 하나씩 덧붙이는** 것. 마지막 `await`가 완성된 주문서를 DB로 **딱 한 번** 발송.
+  ```
+  supabase
+    .from('purchases')   // 주문서: "테이블은 purchases"   (아직 발송 X)
+    .insert({...})       // 추가: "이 데이터 넣어"          (아직 발송 X)
+    .select()            // 추가: "넣은 거 돌려줘"          (아직 발송 X)
+    .single()            // 추가: "객체 하나로"            (아직 발송 X)
+  // ── await가 이 완성된 주문서를 DB로 한 번 발송 ⚡ ──
+  ```
+- **원리:** 각 `.메서드()`는 결과가 아니라 **"조건이 더 담긴 주문서 자신"을 반환** → 그래서 뒤에 또 `.` 찍어 이어붙일 수 있음. (문장 만들기: "나는"+"밥을"+"먹는다"를 점으로 이음)
+- **왜 따로 못 쓰나:** `.select()`는 "**방금 insert한 그 줄**을 돌려줘"라는 뜻 → insert와 select는 **같은 주문**에 대한 얘기라 한 몸. 떼면 "뭘 select해?"가 되어 별개 주문이 됨(말 안 됨).
+  ```
+  ❌ 따로:  .insert({...})  // 넣기만
+            .select()       // ← "방금 그거"가 뭔지 모름! 끊김
+  ✅ 체인:  .insert({...}).select().single()  // "넣고→방금 그거→객체로" 하나의 명령
+  ```
+
+### ④ 결과 받기 — `const { data, error }`
+
+```ts
+const { data, error } = await supabase.from(...).insert(...).select().single()
+```
+- 결과는 한 번 받으면 안 바뀜 → `const`. 나온 걸 그 자리서 `{ data, error }`로 쪼개 받음(구조분해).
+- 성공 → `error = null`, `data`에 완성된 주문 1건. 실패 → `error`에 supabase 에러.
+- 다음 줄 `if (error) throw error` → 에러면 **날 부른 route.ts로 던짐**(500은 route의 catch가 붙임). 성공이면 `return data`.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
