@@ -609,6 +609,63 @@ RLS          = 권한 검사 (누가 뭘 해도 되나) — DB 레벨 최종 문
 
 ---
 
+## 16. ⭐ 넣는 것 vs 나오는 것 · purchase는 성공만 · res는 봉투 (2026-07-15 복습)
+
+> 헷갈렸던 질문들: *"return data가 body에 담기나?"* / *"purchase에 error·data 둘 다 담기나?"* / *"res가 purchase(성공 data)를 받는 건가?"* / *"res에 담는 주체가 Next.js인가?"*
+
+### ① `const purchase = await createPurchase(body)` — 넣는 것 ≠ 나오는 것
+
+```ts
+const purchase = await createPurchase(body)
+//    변수A(담기는 곳)              변수B(넣는 재료)
+//    주스              주스기        오렌지
+```
+- **`body`(오렌지)** = 함수에 **넣는 재료** ➡️. body엔 아무것도 안 담김 — 오히려 꺼내 **주는** 것. (이미 위 `request.json()`에서 만들어져 꽉 참)
+- **`purchase`(주스)** = 함수가 **return한 값이 담기는 곳** ⬅️.
+- **★ `return data`는 `body`가 아니라 `purchase`에 담김.** body=넣는 것, data=나온 것. 방향 반대.
+- 규칙: `const 변수 = 함수(...)` → **변수엔 함수가 return한 값(나온 것)이 담김**(인자 아님). [[05-mutation]]의 res·section 12 "세 곳 같은 모양"과 동일.
+
+### ② `body`의 상태 = 객체변환 + 검증통과 (단, 통째 저장 아님)
+
+- `createPurchase(body)`에 오는 `body`는 항상: **① 객체로 변환됨**(`request.json()`) + **② 2차 검증 통과**(안 그러면 400에서 끊겨 못 옴).
+- ⚠️ 단, body가 **통째로 저장되는 게 아님.** 저장될 한 줄 = **body(🟩사용자값) + 서버값(🟦payment_id·status·total_price) + DB자동(🟨id·created_at)**. body는 🟩부분만 채움. (섹션 14)
+
+### ③ `purchase`엔 성공 data만 — error는 `catch`가 따로 받음
+
+```ts
+try {
+  const purchase = await createPurchase(body)      // 성공: data 담김 / 실패: 튕겨서 안 담김
+  return NextResponse.json(purchase, {status:201}) // 성공 줄 (201)
+} catch (error) {                                   // ← 던져진 error를 여기가 받음 (purchase 아님!)
+  return NextResponse.json({error:'...'}, {status:500}) // 실패 줄 (500)
+}
+```
+- **`{ data, error }` 구조분해는 service(createPurchase) 안에서만** 있는 얘기 — supabase가 둘 다 줘서. route의 `purchase`엔 **성공 data만** 옴.
+- createPurchase는 **성공이면 `return data`, 실패면 `throw`** (둘 다 주는 게 아님). throw면 그 줄에서 튕겨 `catch`로 점프 → `purchase`엔 아무것도 안 담김.
+- **★ 201/500 결정 = `try/catch`(갈림길 🚦).** `NextResponse.json`은 결정 안 함 — 받은 걸 **포장만** 함.
+
+### ④ `res` = purchase가 아니라 "봉투" (안에 문자열로 품음)
+
+```
+res (봉투) ┌─ status 201        ← 겉면 (res.ok로 안 열고 봄)
+           └─ body "{id:...}"   ← purchase가 여기! 아직 문자열 📦
+```
+- `route.ts`가 `NextResponse.json(purchase)`로 **객체→문자열 포장**해 보냄 → `res`의 body는 **문자열**.
+- **`res` = 봉투(전체)**, **`purchase` = 봉투 속 알맹이.** 봉투 ≠ 알맹이.
+- 진짜 purchase 꺼내려면 → **`res.json()`**(문자열→객체). 성공 봉투엔 `purchase`, 실패 봉투엔 `{error}`.
+
+### ⑤ 주체 — `res`에 담는 건 Next.js 아니라 `fetch`(브라우저)
+
+```
+Next.js(서버)  NextResponse.json(...) → 봉투 "만들어 보내는" 쪽
+   ─ 네트워크 ─
+fetch(브라우저) const res = await fetch(...) → 봉투 "받아 res에 담는" 쪽
+```
+- **`res`에 담는 주체 = `fetch`(브라우저).** Next.js는 내용물(봉투)을 만들어 보낸 쪽일 뿐.
+- 대칭: **가는 길** request를 POST에 주입 = Next.js(서버가 받음) / **오는 길** res 담기 = fetch(브라우저가 받음). 각 편에서 "받는 쪽"이 주체.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
