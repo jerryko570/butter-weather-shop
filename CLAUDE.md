@@ -1225,7 +1225,7 @@ create unique index purchases_payment_id_idx on purchases (payment_id);
 
 막히면 또 보여줘 — 잘 가고 있어.
 
-# Butter Weather Shop — 프로젝트 컨텍스트 이 파일은 Claude Code가 매 작업마다 참고하는 프로젝트 기준 문서다. ## 개요 14년차 디자이너가 직접 설계·개발하는 디자인 편집샵. 비즈키링·팔찌 등 핸드메이드 악세사리 판매. - **한국 시장 먼저** → 미국·중국 확장. - 사이트는 다국가 대응이 가능한 구조로 짓되, 마케팅은 한 시장씩 순차로. ## 기술 스택 - Next.js 16 (App Router) + TypeScript - Tailwind CSS v4 - Supabase (Postgr
+# Butter Weather Shop — 프로젝트 컨텍스트 이 파일은 Claude Code가 매 작업마다 참고하는 프로젝트 기준 문서다. ## 개요 12년차 디자이너가 직접 설계·개발하는 디자인 편집샵. 비즈키링·팔찌 등 핸드메이드 악세사리 판매. - **한국 시장 먼저** → 미국·중국 확장. - 사이트는 다국가 대응이 가능한 구조로 짓되, 마케팅은 한 시장씩 순차로. ## 기술 스택 - Next.js 16 (App Router) + TypeScript - Tailwind CSS v4 - Supabase (Postgr
 
 pasted
 
@@ -1274,7 +1274,7 @@ Claude · MD
 
 ## 개요
 
-14년차 디자이너가 직접 설계·개발하는 디자인 편집샵. 비즈키링·팔찌 등 핸드메이드 악세사리 판매.
+12년차 디자이너가 직접 설계·개발하는 디자인 편집샵. 비즈키링·팔찌 등 핸드메이드 악세사리 판매.
 
 - **한국 시장 먼저** → 미국·중국 확장.
 - 사이트는 다국가 대응이 가능한 구조로 짓되, 마케팅은 한 시장씩 순차로.
