@@ -554,6 +554,61 @@ const purchase = await createPurchase(body)          // ✅ 통과한 body만 �
 
 ---
 
+## 15. ⭐ RLS — 클라이언트 2종류 + insert 프리패스/update 차단 + 정책 SQL 읽기 (2026-07-15 복습)
+
+> 질문 흐름: *"insert도 purchases RLS를 거치는 거지?"* → 맞음. 실제 정책(`purchases_insert_anyone`)까지 DB에서 직접 찾아 읽음. RLS 상세는 [[03-rls]], 쓰기 흐름은 [[05-mutation]].
+
+### ① 클라이언트 2종류 → RLS 거침 vs 우회 (`purchase.service.ts`)
+
+| 함수 | 동작 | 클라이언트 | RLS |
+| --- | --- | --- | --- |
+| `createPurchase` | insert | `createClient()` (서버 일반, anon+쿠키) | ✅ **거침** |
+| `getPurchaseByPaymentId` | select | `createClient()` | ✅ 거침 |
+| `markPurchasePaid` | update | `createAdminClient()` (service role) | 🔓 **우회** |
+
+- **insert·select** = 일반 클라이언트로 RLS 문을 **거쳐서 통과**.
+- **update(결제확정)** = RLS가 막아서 일반 클라로는 거부됨 → **service role로 우회.** 비밀키(`SUPABASE_SERVICE_ROLE_KEY`)는 서버만 앎(브라우저 X).
+
+### ② 왜 insert는 열고 update는 잠갔나 — 돈 기준
+
+```
+insert (주문 생성) → 누구나 OK   (게스트도 주문해야 하니까. 생기는 건 pending 줄 하나, 돈 안 움직임)
+update (paid로 변경) → 잠금       (결제 상태 = 돈. 아무나 바꾸면 공짜 결제 조작 가능 🔒)
+```
+- 진짜 방어선은 "돈이 움직이는 곳"(update)에 있음. insert가 열려도 가짜 주문은 pending으로 쌓일 뿐, 결제는 PortOne 검증 통과 시에만 service role로 `paid` 처리.
+
+### ③ 실제 insert 정책 읽기 (DB에서 직접 확인, 2026-07-15)
+
+```sql
+alter policy "purchases_insert_anyone"   -- 정책 이름(라벨) = purchases+insert+anyone, 뜻 담아 지음
+on "public"."purchases"                  -- public 스키마(서랍)의 purchases 테이블에
+to public                                -- 대상: 누구나(anon 포함)
+with check ( true )                      -- 통과 조건: 무조건 true = 프리패스 🎫
+```
+- **`alter policy`** = 이미 있는 정책을 정의/수정하는 문법(Supabase 편집 화면이 기존 정책을 보여주는 것. 지금 바꾸는 게 아님).
+- **`with check (조건)`** = insert/update로 **들어오는 새 줄**이 맞아야 할 조건. `(true)`라 아무 조건 없이 통과. (`auth.uid()=user_id`면 "본인 것만"으로 잠글 수 있지만, 게스트 체크아웃이라 `true`로 열어둠)
+- **★ RLS는 안 거치는 게 아니라, 거치는데 `true`라 통과** — 문은 있고 프리패스.
+
+### ④ ⚠️ `public`이 두 번 나오는데 뜻이 다름 (함정)
+
+```sql
+on "public"."purchases"   ← public = 스키마 이름(테이블 담는 서랍 📁)
+to public                 ← public = "모든 역할(누구나)" 👥
+```
+- 글자만 같고 뜻 다름. **위치로 구분: `on` 뒤 = 서랍 / `to` 뒤 = 대상(누구).**
+- 스키마 = 테이블 폴더. 내 테이블들은 `public` 서랍, Supabase 로그인 테이블은 `auth` 서랍(`auth.users`). 점(.) = "~안의 ~".
+
+### ⑤ 문지기 2겹 정리
+
+```
+route.ts 검증  = 양식 검사 (필수값 있나) — 통과 못하면 400
+     +
+RLS          = 권한 검사 (누가 뭘 해도 되나) — DB 레벨 최종 문지기
+```
+- insert는 양식(route)·권한(RLS) 둘 다 통과해야 저장. 어제 배운 "2차 방어선"과 이어짐.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
