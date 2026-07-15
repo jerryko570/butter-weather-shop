@@ -712,6 +712,49 @@ const purchase = usePurchase()                // = 주문 도구 꾸러미(연�
 
 ---
 
+## 18. ⭐ 페이지가 도구를 UI에 연결 + 구조분해 두 방식(이름 충돌 회피) (2026-07-15 복습)
+
+> 캐치한 것: *"페이지에서 mutate·isPending·isError를 연결하는구나? 구조분해도 여기서 하는 거야?"* → 둘 다 맞음. 그리고 두 훅이 **꺼내는 방식이 다른 걸** 눈치챔.
+
+### ① 연장통은 훅이 만들고, UI에 연결하는 건 페이지
+
+- `usePurchase()`가 도구 꾸러미를 **만들어 주고**, 그 도구를 화면에 **연결**하는 건 page.
+- page.tsx 실제 사용처(주석 제외 4곳):
+  ```
+  64줄   purchase.mutate(...)              → "Buy It Now" 클릭 시 주문 발사 🔫
+  247줄  disabled={purchase.isPending||…}  → 버튼 잠금(중복주문 방지) ⏳
+  252줄  purchase.isPending ? '주문 생성 중...' → 버튼 글자
+  260줄  purchase.isError || payment.isError    → 에러 표시 여부 ❌
+  262줄  (purchase.error ?? payment.error)?.message → 에러 메시지(어제 throw한 문구)
+  ```
+
+### ② 구조분해 두 방식 — 둘 다 "꾸러미 꺼내기", 방식만 다름
+
+```ts
+const { data: product, isLoading, error } = useProduct(slug)  // 구조분해 O (바로 쪼갬)
+const purchase = usePurchase()                                // 구조분해 X (통째로 둠)
+```
+
+| 방식 | 코드 | 꺼내 쓸 때 |
+| --- | --- | --- |
+| 바로 쪼개기(구조분해) | `const { data: product, ... } = useProduct()` | `product`, `isLoading` (짧게) |
+| 통째로 두기 | `const purchase = usePurchase()` | `purchase.mutate`, `purchase.isPending` (점으로) |
+
+### ③ ⭐ 왜 `usePurchase`는 안 쪼갰나 — 이름 충돌 회피
+
+- 두 훅 다 `data`·`error`를 가짐. **둘 다 구조분해하면 `data` 2개·`error` 2개 → 충돌 💥** (한 스코프에 같은 이름 못 씀).
+  ```ts
+  const { data, error } = useProduct(slug)
+  const { data, error } = usePurchase()   // 💥 data·error 중복 선언 에러
+  ```
+- 해결책 2가지가 실제로 쓰임:
+  - `useProduct` → `data: product`로 **이름 바꿔** 충돌 피함(별칭).
+  - `usePurchase` → 아예 **통째로 `purchase`**로 둬서 `purchase.error`처럼 **소속을 붙여** 충돌 피함.
+- 그래서 260줄 `purchase.error ?? payment.error` — 소속(purchase/payment)이 붙어 안 겹침.
+- 결론: **둘 다 "꾸러미에서 필요한 걸 꺼내 쓴다"는 같음.** 방식(쪼개기 vs 통째)만 다르고, 이유는 **data·error 이름 충돌 회피**.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
