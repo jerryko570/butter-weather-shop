@@ -589,6 +589,23 @@ with check ( true )                      -- 통과 조건: 무조건 true = 프�
 - **`with check (조건)`** = insert/update로 **들어오는 새 줄**이 맞아야 할 조건. `(true)`라 아무 조건 없이 통과. (`auth.uid()=user_id`면 "본인 것만"으로 잠글 수 있지만, 게스트 체크아웃이라 `true`로 열어둠)
 - **★ RLS는 안 거치는 게 아니라, 거치는데 `true`라 통과** — 문은 있고 프리패스.
 
+#### ⭐ `using` vs `with check` — 검사 시점/대상이 다름
+
+```
+using      = 이미 DB에 있는 "기존 행" 검사  → select·delete·update   (나가는/건드리는 쪽 📤)
+with check = 새로 들어오는/바뀌는 "새 값" 검사 → insert·update        (들어오는 쪽 📥)
+```
+| 동작 | 쓰는 절 | 뜻 |
+| --- | --- | --- |
+| select(읽기) | `using` | 기존 행 중 볼 수 있는 것만 |
+| insert(넣기) | `with check` | 새 값이 규칙 맞나 |
+| update(수정) | `using` + `with check` | 기존 행 건드려도 되나 + 바뀐 값 괜찮나 (둘 다!) |
+| delete(삭제) | `using` | 지워도 되는 행인가 |
+
+- 실제 예: 상품 읽기 `on products for select using (is_active = true)` / 주문 넣기 `on purchases for insert with check (true)`.
+- `(true)`면 둘 다 프리패스. 조건 넣으면 잠금(예: `using (auth.uid()=user_id)` = 본인 행만).
+- 기억법: **check = 체크인(들어올 때 짐 검사) 📥 / using = 나갈 때·쓸 때 신분 확인 📤.**
+
 ### ④ ⚠️ `public`이 두 번 나오는데 뜻이 다름 (함정)
 
 ```sql
