@@ -666,6 +666,52 @@ fetch(브라우저) const res = await fetch(...) → 봉투 "받아 res에 담�
 
 ---
 
+## 17. ⭐ 읽기 직통 vs 쓰기 릴레이 · 구매 UI 위치 · page의 `purchase`=연장통 (2026-07-15 복습)
+
+> 질문 흐름: *"page에 최신 데이터 어디서 받나?"* → `useProduct`. *"구매 UI 페이지 어디 있나?"* → 따로 없음. *"page의 purchase가 어떻게 쓰이나?"* → route.ts의 purchase와 딴 것.
+
+### ① 읽기(상품)는 route.ts 안 거침 — 브라우저→supabase 직통
+
+```
+📖 읽기(상품):  page → useProduct → supabase.select() → DB       ← route.ts 없음! 직통
+✍️ 쓰기(주문):  page → usePurchase → fetch → route.ts → createPurchase → supabase.insert() → DB
+```
+- 증거 = `import`가 다름:
+  ```ts
+  useProducts.ts      → '@/lib/supabase/client'  🌐 브라우저용 (직접 호출)
+  purchase.service.ts → '@/lib/supabase/server'  🖥️ 서버용 (route.ts 안에서)
+  ```
+- **왜 다른가:** 공개 상품 읽기는 안전(RLS가 `is_active=true`만 내줌, 데이터 안 변함) → 직통으로 빠르게. 주문 쓰기는 검증·서버값(payment_id)·보안 필요 → route.ts(서버) 경유.
+- 프로젝트 원칙(CLAUDE.md)과 일치: **"상품은 supabase 직접 호출, 결제·주문만 route handler."**
+- 데이터 받는 지점 = `page.tsx:21` `const { data: product, isLoading, error } = useProduct(slug)`. 이 `product`로 화면 전체를 그림.
+
+### ② 구매 UI 전용 페이지는 없음 — 상품 상세 안에 있음
+
+- `(shop)` 페이지 전부: 홈 / about / products(목록) / products/[slug](상세). **checkout·cart 폴더 없음**(CLAUDE.md엔 계획으로만).
+- 구매 UI = `[slug]/page.tsx` 안: 수량(−/+) · Total · **"Buy It Now" 버튼**(243줄) · 주문/결제 상태·에러 · **성공 팝업**(353줄~).
+- **"Buy It Now" 직행 방식**: 상품 상세 → 바로 PortOne 결제창(페이지 아니라 **팝업**) → 성공 팝업. 장바구니·체크아웃 페이지 안 거침.
+- `api/purchases`는 UI가 아니라 **route.ts(서버)**. 화면 없음.
+
+### ③ ⚠️ 같은 이름 `purchase`, 완전히 다른 것 (함정)
+
+```ts
+// route.ts
+const purchase = await createPurchase(body)   // = DB 주문 1건 (데이터)
+// page.tsx:23
+const purchase = usePurchase()                // = 주문 도구 꾸러미(연장통) 🧰
+```
+- **page의 `purchase` = `useMutation`이 준 꾸러미** { mutate, isPending, isError, error, ... }. 데이터 아님!
+- 그 안 도구를 화면 곳곳에서 꺼내 씀:
+  ```
+  purchase.mutate    → 63줄:  "Buy It Now" 클릭 시 주문 발사 🔫
+  purchase.isPending → 246줄: 버튼 잠금(중복클릭 방지) / 251줄: "주문 생성 중..." 글자 ⏳
+  purchase.isError   → 259줄: 에러 메시지 보일지 말지 ❌
+  purchase.error     → 261줄: 그 에러(throw된 메시지).message 표시
+  ```
+- 즉 `purchase`(연장통)는 한 번 만들어 두고, `.도구`를 꺼내 버튼·상태·에러에 연결. `purchase.mutate`가 어제 그 `postPurchase→fetch→route.ts` 흐름의 방아쇠.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
