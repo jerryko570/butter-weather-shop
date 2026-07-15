@@ -13,6 +13,8 @@ import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
 async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {
   const res = await fetch('/api/purchases', {
+    //  ㄴ 응답 전체 (상태코드 + 헤더 + body 문자열)
+    // res에 담는 건 fetch(브라우저) / Next.js는 봉투(응답)을 만들어 보낸 족
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -20,13 +22,15 @@ async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {
 
   if (!res.ok) {
     // status 겉면 확인. 안열어도 됨 (201, 400, 500?)
-    const { error } = await res.json() // 실패 봉투 열어서 에러 메시지 먼저 꺼냄
+    const { error } = await res.json() // 실패 봉투 열어서 에러 메시지 먼저 꺼냄 ->
     //
     // res.json() = 서버 응답 봉투를 열어 (문자열 -> 객체) body 값 모두 꺼내기
     throw new Error(error ?? '주문에 실패했습니다.')
   }
 
   return res.json()
+  // 봉투 열어 꺼낸 객체 -> 이게 진짜 purchase
+  // 성공 봉투 안엔 purchase / 실패 봉투 안엔 {error} 둘다 res 봉투로 옴
 }
 
 export const usePurchase = () => {

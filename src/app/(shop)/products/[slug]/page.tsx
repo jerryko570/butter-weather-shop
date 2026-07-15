@@ -18,9 +18,13 @@ export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const router = useRouter()
   const { locale } = useT()
-  const { data: product, isLoading, error } = useProduct(slug)
+  const { data: product, isLoading, error } = useProduct(slug) // 읽기 / 구조분해 O (바로 쪼개기)
+  //       ㄴ supabase return data -> ReactQuery : queryFn -> return 받아서 꾸러미 data 칸에 담음 (배달부)
+  //       ㄴ> page가 그 data를 꺼내서 -> product로 이름을 변경해 씀
 
   const purchase = usePurchase()
+  // 쓰기 & 구조분해 X
+  // 안쪼개고 통째로 purchase에 둠. 나중에 purchase.mutate 처럼 점으로 꺼내 쓰기 위함. 이름 충돌 회피
   const payment = usePayment()
 
   const [quantity, setQuantity] = useState(1)

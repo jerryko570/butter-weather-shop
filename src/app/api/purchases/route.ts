@@ -1,16 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   가는 길:  객체 →[포장]→ 문자열 →네트워크→ 문자열 →[풀기]→ 객체
-   오는 길:  객체 →[포장]→ 문자열 →네트워크→ 문자열 →[풀기]→ 객체
-   📄 usePurchase (손님)
-   ① 객체 → 문자열   JSON.stringify(input)      ← 포장 #1
-      ─── 네트워크 (가는 길) ───
-📄 route.ts (서버)
-   ② 문자열 → 객체   await request.json()        ← 풀기 #1  ★네가 말한 이거!
-   ③ ...검증, createPurchase... (서버 안에서 객체로 일함)
-   ④ 객체 → 문자열   NextResponse.json(data)     ← 포장 #2  ★여기서 또 문자열됨!
-      ─── 네트워크 (오는 길) ───
-📄 usePurchase (손님)
-   ⑤ 문자열 → 객체   await res.json()             ← 풀기 #2  ★그래서 또 풀어야 함
+   ▌ 코드 원본 ─ 주석 없이 실제로 돌아가는 코드
    ════════════════════════════════════════════════════════════════ */
 
 import { NextResponse } from 'next/server'
@@ -20,8 +9,7 @@ import type { CreatePurchaseInput } from '@/types/purchase'
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CreatePurchaseInput
-    // request.json() -> 이 객체는 서버 안에서만 살아 있고
-    // 네트워크를 다시 건널 땐 또 문자열로 포장
+
     if (
       !body.product_id ||
       !body.product_name ||
@@ -29,15 +17,20 @@ export async function POST(request: Request) {
       !body.price_krw
     ) {
       return NextResponse.json(
-        { error: '필수 항목을 모두 입력해주세요.' }, // 내용물만 문자열이 됨 -> 뜯어야 보임 (res.json)
-        { status: 400 } // 문자열 안됨 (res.ok 보임)
+        { error: '필수 항목을 모두 입력해주세요.' },
+        { status: 400 } // createPurchase까지 못감
       )
     }
 
     const purchase = await createPurchase(body)
+    //    --변수A--                      --변수B--
+    //  결과가 담기는 곳                   함수에 넣는 곳
+    // const 주스 = 주스기(오렌지) / 오렌지: 주스기에 넣음. 주스: 주스기에 나온곳이 담기는 곳
 
     return NextResponse.json(purchase, { status: 201 })
   } catch (error) {
+    // 던져진 error를 여기서 받음
+    // (createPurchase가 throw -> try 중단 -> catch로 점프 -> NextRespose.json({error}, 500) 실행
     console.error('Purchase creation failed:', error)
 
     return NextResponse.json(
@@ -53,7 +46,7 @@ export async function POST(request: Request) {
 
    주문 생성 API Endpoint  (라우트 핸들러 = 서버 코드, 받는 쪽)
    · front(usePurchase)와 DB 로직(Service) 사이의 "중간 다리"
-   · 직접 DB를 만지지 않고 createPurchase에게 위임한다
+   · 역할 = 문지기(검증) + 통역(포장/풀기). DB는 createPurchase에 위임
 
    요약:
      POST 요청이 들어오면 실행되는 비동기 함수.
@@ -64,21 +57,45 @@ export async function POST(request: Request) {
 
 
    ─────────────────────────────────────────────
+   ★★ 포장·풀기는 왕복 4번 (편도 아님!)
+   ─────────────────────────────────────────────
+   가는 길:  객체 →[포장]→ 문자열 →네트워크→ 문자열 →[풀기]→ 객체
+   오는 길:  객체 →[포장]→ 문자열 →네트워크→ 문자열 →[풀기]→ 객체
+
+   📄 usePurchase (손님 / 브라우저)
+     ① 객체 → 문자열    JSON.stringify(input)        ← 포장 #1
+        ─── 네트워크 (가는 길) ───
+   📄 route.ts (서버)  ← 이 파일
+     ② 문자열 → 객체    await request.json()          ← 풀기 #1
+     ③ 검증 → createPurchase …   (서버 안에서는 "객체"로 일함)
+     ④ 객체 → 문자열    NextResponse.json(data)       ← 포장 #2  (여기서 또 문자열!)
+        ─── 네트워크 (오는 길) ───
+   📄 usePurchase (손님)
+     ⑤ 문자열 → 객체    await res.json()              ← 풀기 #2  (그래서 또 풀어야 함)
+
+   ★ 왜 또 포장하나?
+     ②에서 푼 객체는 "서버 안에서만" 살아 있음. 네트워크를 다시 건널 땐
+     또 문자열이어야 함 → 그래서 ④ 포장 #2, ⑤ 풀기 #2가 필요.
+   → 네트워크를 건널 때마다 [포장→풀기] 한 쌍이 붙는다.
+
+
+   ─────────────────────────────────────────────
+   ★ 응답 중 문자열이 되는 건 "본문"뿐 (status는 아님)
+   ─────────────────────────────────────────────
+   NextResponse.json( { error: '…' },   { status: 400 } )
+                      ───┬─────────      ───┬────────
+                         │                  └ status = 문자열 X → 손님이 res.ok로 바로 봄
+                         └ 본문(내용물) = 문자열 됨 → 손님이 res.json()으로 뜯어야 보임
+   → 그래서 손님은: res.ok로 먼저 성패 판단 → 그 다음 res.json()으로 내용 확인
+
+
+   ─────────────────────────────────────────────
    ★ 네트워크 O vs X — 두 종류의 "호출"을 구분
    ─────────────────────────────────────────────
    fetch('/api/purchases', …)  = 브라우저 → 서버    : 네트워크 O (선 타고 감, 문자열만)
    createPurchase(body)        = 서버 안 함수 호출  : 네트워크 X (같은 서버 안에서 "점프")
    · () = 함수를 "실행하는 스위치" (지금 실행)
    · 그래서 fetch엔 stringify/파싱이 필요하고, 함수 호출엔 필요 없음(객체 그대로 전달)
-
-
-   ─────────────────────────────────────────────
-   포장 ↔ 풀기 — "어디서" 도는가 (위치가 핵심)
-   ─────────────────────────────────────────────
-   포장 = JSON.stringify   → 커스텀 훅(postPurchase)에서, 즉 브라우저에서 돎
-   풀기 = request.json()   → route.ts(POST)에서, 즉 서버에서 돎
-   · 둘 사이는 네트워크 → 문자열만 건너감 → 한쪽이 싸고(포장) 한쪽이 푼다(풀기)
-   · 여는 주체 = 서버 (request.json() 줄이 그 지점)
 
 
    ─────────────────────────────────────────────
@@ -116,49 +133,42 @@ export async function POST(request: Request) {
    ─────────────────────────────────────────────
    export async function POST(request: Request) {
    // · export = Next.js가 이 함수를 찾아 라우팅하려고 내보냄 (내가 호출 X)
-   // · POST 요청이 오면 Next.js가 이 함수를 실행 (파일명·위치로 라우팅됨)
    // · request = 손님(브라우저)이 fetch로 보낸 요청 "전체" (method+headers+body 봉투)
    //   = Request 타입 모양을 한 객체 / "요청 처리 그 순간 채워지는 받는 손"
-   //   → 내가 만드는 게 아니라 Next.js가 자동으로 POST의 첫 매개변수에 끼워줌
+   //   → Next.js가 자동으로 POST의 첫 매개변수에 끼워줌
 
      try {
        const body = (await request.json()) as CreatePurchaseInput
-       // · request.json() = 봉투(요청) 열어서 본문 꺼내기(받기 파싱) — 커스텀 훅에서 온 데이터
-       //   (보낼 때 JSON.stringify 했던 걸 → 여기 서버에서 다시 객체로 푸는 반대 동작)
-       // · ★ await = 결과를 즉시 주는 게 아니라 "약속(Promise=교환권)"부터 받고,
-       //     준비되면 교환해 값(body)을 꺼냄 (body가 아직 들어오는 중일 수 있어서)
-       // · const 변수 = (표현식) 꼴 — (await …) 결과를 body에 담음
-       // · as CreatePurchaseInput = "이 모양일 거다"라고 타입만 약속 (검사 X)
+       // · ★ 풀기 #1 — 문자열 → 객체 (손님이 stringify한 걸 서버에서 품)
+       // · 이 객체는 "서버 안에서만" 살아 있음
+       //     → 다시 네트워크 건널 땐 또 문자열로 포장해야 함 (아래 ④)
+       // · ★ await = 결과 즉시 X → "약속(Promise=교환권)"부터 받고, 준비되면 값 교환
+       // · as CreatePurchaseInput = "이 모양일 거다" 타입만 약속 (검사 X)
 
        if (!body.product_id || !body.product_name || !body.quantity || !body.price_krw) {
          return NextResponse.json(
-           { error: '필수 항목을 모두 입력해주세요.' },   // ← 응답 본문(실패 전용)
-           { status: 400 }                                // ← 옵션(상태코드)
+           { error: '필수 항목을 모두 입력해주세요.' },   // ← 본문: 문자열 됨 → res.json()으로 뜯어야 보임
+           { status: 400 }                                // ← status: 문자열 X → res.ok로 바로 보임
          )
        }
-       // · 필수 4개 중 하나라도 비면(|| falsy) → 400(Bad Request)로 즉시 반환
+       // · 필수 4개 중 하나라도 비면(|| falsy) → 400(Bad Request)
        // · ★ early return = POST 함수를 여기서 "즉시 종료" → 400을 손님(fetch)이 받음
-       // · ★ 2차 방어선: 브라우저(클라)에서 막았어도 서버가 한 번 더 검사
-       //     (요청은 조작될 수 있으니 서버 검증이 진짜 방어선)
+       // · ★ 2차 방어선: 요청은 조작될 수 있으니 서버가 한 번 더 검사
        //   + 낭비 방지: 필수값 없는 요청을 createPurchase까지 보내면 supabase에서
        //     어차피 에러 → DB 호출 낭비. 미리 걸러낸다
-       // · NextResponse.json(본문, 옵션) = 응답 만들어 밖으로 내보냄
-       //     → 네트워크 타고 손님의 res.json()으로 열림 (손님이 { error } 구조분해)
 
        const purchase = await createPurchase(body)
        // · () = 함수를 "실행하는 스위치" → createPurchase를 지금 실행
-       // · ★ 이 점프는 "같은 서버 안" 함수 호출 → 네트워크 X (fetch와 다른 점!)
-       //     (fetch = 브라우저→서버 네트워크 O / 여긴 서버 내부라 네트워크 X, 객체 그대로)
-       // · 검증 통과한 body를 넘겨 실행 → DB insert
-       //     (service가 payment_id 등 "서버에서 만든 값"을 덧붙여 저장)
-       // · DB insert는 시간이 걸려서 await가 그 함수의 return까지 "멈춰서 기다림"
-       // · service의 return data → 이 줄로 돌아와 purchase 변수에 담김
+       // · ★ 이 점프는 "같은 서버 안" 함수 호출 → 네트워크 X → 포장/풀기 불필요(객체 그대로)
+       // · service가 payment_id 등 "서버에서 만든 값"을 덧붙여 저장
+       // · await가 그 함수의 return까지 "멈춰서 기다림" → return data가 이 줄로 돌아와 담김
+       // · ★ service가 throw한 error도 "이 줄로 되돌아옴" → 아래 catch로 빠짐
 
        return NextResponse.json(purchase, { status: 201 })
-       // · 내용물(purchase) + { status: 201 } 두 개를 직접 넣으면
-       //   NextResponse.json()이 HTTP 응답 형태로 "포장만" 해준다
-       // · 201(Created) = "새 자원 생성 성공"
-       //   이 응답이 postPurchase의 res.json() → onSuccess(createdPurchase)로 이어짐
+       // · ★ 포장 #2 — 객체(purchase) → 문자열로 싸서 네트워크에 태움
+       //     내용물 + { status } 두 개를 넣으면 HTTP 응답 형태로 "포장만" 해줌
+       // · 201 = Created(새 자원 생성 성공)  /  200 = OK (주로 GET 조회 성공)
+       //   이 응답이 손님의 res.json()(풀기 #2) → onSuccess(createdPurchase)로 이어짐
 
      } catch (error) {
        console.error('Purchase creation failed:', error)
@@ -175,23 +185,29 @@ export async function POST(request: Request) {
    ─────────────────────────────────────────────
    헷갈릴 때 메모
    ─────────────────────────────────────────────
+   · 포장/풀기는 왕복 4번
+       ① stringify(브라우저) → ② request.json(서버)
+       ④ NextResponse.json(서버) → ⑤ res.json(브라우저)
+       → 네트워크를 건널 때마다 [포장→풀기] 한 쌍. 객체는 그 안(한쪽)에서만 산다
+
+   · 응답에서 문자열 되는 건 본문뿐
+       body   → 문자열 → res.json()으로 뜯어야 보임
+       status → 문자열 X → res.ok로 바로 보임
+
    · 네트워크 O vs X
        fetch(주소, …)     = 브라우저→서버, 네트워크 O (stringify/파싱 필요)
        createPurchase(…)  = 서버 안 함수 호출, 네트워크 X (객체 그대로, () = 실행)
+
    · await = 결과 즉시 X → "약속(Promise)"부터 → 준비되면 값 교환
    · early return = 검증 실패 시 POST 함수 즉시 종료 (뒤로 안 감)
-   · throw(service) → catch(route) → 500 : 던지는 곳과 받는 곳이 다름
+   · throw(service) → 그 줄로 되돌아옴 → catch(route) → 500
    · 2차 방어선 = 위조 대비 + 헛된 DB 호출 낭비 방지
-   · 포장/풀기는 "장소"가 다르다
-       포장(stringify) = 브라우저(훅) / 풀기(request.json) = 서버(route)
    · 요청 = method+headers+body  /  응답 = status+headers+body
-   · request.json()(받기 파싱) ↔ NextResponse.json()(응답 만들기) — 짝
    · export하는 이유 = Next.js가 이 함수를 찾아 라우팅하려고 (내가 직접 호출 X)
-   · request는 내가 안 만든다 — Next.js가 POST의 첫 인자로 자동 주입
    · 상태코드
-       400 = 입력값 문제(검증 실패) / 201 = 생성 성공 / 500 = 서버 내부 오류
+       200 = 조회 성공(GET) / 201 = 생성 성공(POST)
+       400 = 입력값 문제(검증 실패) / 500 = 서버 내부 오류
    · 역할 분리
-       route(이 파일) = 문지기·통역 (검증 + 요청/응답 변환)
+       route(이 파일) = 문지기(검증) + 통역(포장/풀기)
        service(createPurchase) = 실제 DB 작업
-     → route는 DB를 직접 만지지 않고 service에 위임
    ════════════════════════════════════════════════════════════════ */
