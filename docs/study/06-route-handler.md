@@ -485,6 +485,75 @@ const { data, error } = await supabase.from(...).insert(...).select().single()
 
 ---
 
+## 14. ⭐ insert 값의 출처 3종류 + 문지기 통과값만 insert + 실DB 확인 (2026-07-15 복습)
+
+> 헷갈렸던 질문: *"사용자가 UI에서 수량·이름 체크한 데이터를 supabase에 직접 전송하는 거야?"* / *"검증된 값이 insert에 들어가는 거지?"*
+
+### ① insert 값은 3종류 — 전부 사용자한테서 오는 게 아님
+
+```ts
+.insert({
+  payment_id:   paymentId,          // 🟦 서버가 만듦 (crypto.randomUUID())
+  product_id:   input.product_id,   // 🟩 사용자 (UI에서 선택)
+  product_name: input.product_name, // 🟩 사용자
+  quantity:     input.quantity,     // 🟩 사용자 (수량 체크값)
+  price_krw:    input.price_krw,    // 🟩 사용자
+  price_usd:    input.price_usd,    // 🟩 사용자
+  total_price:  input.price_krw,    // 🟦 서버가 정함 (input으로 계산)
+  status:       'pending',          // 🟦 서버가 박은 고정값
+})                                   // + id·created_at = 🟨 DB 자동 생성
+```
+- **🟩 `input.___`** = 사용자 값 (page.tsx의 `mutate({...})`에서 출발).
+- **🟦 서버 값** = `payment_id`(랜덤 발급)·`status:'pending'`·`total_price`. 사용자가 못 건드림.
+- **🟨 DB 자동** = `id`·`created_at`. 코드에 안 썼는데 DB가 채움 → `.select()`로 도로 받아야 앎.
+- **★ 왜 나눔 = 보안.** `status`를 사용자가 보내게 하면 `status:'paid'`로 조작해 **공짜 결제완료** 가능. 그래서 **돈·상태·고유번호는 서버가 박음** 🔒.
+
+### ② 사용자 → supabase "직통 아님". page→hook→route→service 릴레이
+
+```
+🧑 page.tsx      purchase.mutate({ quantity, ... })   ← 사용자 값 출발
+📄 usePurchase   postPurchase(input) → fetch          ─ 네트워크 ─
+📄 route.ts      request.json() → 🚪검증 → createPurchase(body)
+📄 service       .insert({ ...input, +서버값 }) → supabase
+🗄️ DB
+```
+- 이 줄의 `input.quantity`를 거슬러 가면 = page.tsx에서 사용자가 `mutate`에 넣은 값.
+- 사용자가 DB에 직접 못 쏨 — 반드시 **route.ts(검증)** 거침.
+
+### ③ 🚪 문지기 — 통과한 `body`만 insert까지 감
+
+```ts
+const body = await request.json()
+if (!body.product_id || !body.product_name
+    || !body.quantity || !body.price_krw) {
+  return NextResponse.json({error}, {status:400})   // ✋ 하나라도 없으면 여기서 끊김
+}
+const purchase = await createPurchase(body)          // ✅ 통과한 body만 → insert
+```
+- **검증과 insert는 같은 `body`** — 검증한 그 값을 그대로 `createPurchase(body)`에 넘김.
+- 실패 → 400으로 끊겨 insert 못 감 / 통과 → insert엔 **필수 4개 다 있는 body**만 도달.
+- ⚠️ 이 검증은 **"있냐/없냐"(`!`=없으면)만** 봄. "수량 999가 말이 되나" 같은 **내용 검사는 안 함** — 최소 방어선.
+
+### ④ 실DB 확인 (2026-07-15, service role로 조회)
+
+`purchases` 최신 5건 실측 → 코드가 진짜로 반영됨:
+- `payment_id`가 전부 **다른 UUID**(`edec2c2e-...` 등) → "안 겹치는 고유번호" 실제로 지켜짐 ✔
+- `status`가 `pending`/`cancelled`만 (아직 `paid` 없음 = 결제완료까지 간 진짜 주문 없음, 다 테스트) ✔
+- 코드에 안 쓴 `id`·`created_at`이 채워져 있음 = DB 자동값 ✔
+
+### ⑤ ★ 순서 = DB 스키마(설계도) 먼저 → service(주문서)가 거기 맞춤
+
+> 깨달음: *"처음에 DB 스키마 설정한 다음, service를 거기 맞춰서 작업하는 거구나?"* → 맞음.
+
+- **DB 스키마 = 진실의 기준(source of truth).** 칸 이름·타입·규칙을 DB가 먼저 정하고, service의 insert는 그걸 어기면 안 됨(어기면 저장 자체가 거부됨).
+- service가 스키마에 맞춰야 하는 3가지:
+  1. **칸 이름 일치** — `payment_id`(오타 `paymentId` 쓰면 "그런 칸 없음" 에러)
+  2. **타입 일치** — `price_krw`는 `int4` → 정수 넣어야 함 (그래서 "가격은 원 단위 정수")
+  3. **제약 지키기** — `payment_id` 유니크·`product_id` NOT NULL → ★ **문지기 검증(③)이 이 NOT NULL을 미리 지키려는 것**
+- 빌드 순서와 연결: `① 스키마 → ② 어드민(쓰기) → ③ 사이트(읽기) → ④ 결제(쓰기)` — ②③④가 전부 ①에 맞춤. **설계도가 흔들리면 그 위에 지은 게 다 무너지므로 "토대 먼저".**
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
 
