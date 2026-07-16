@@ -5,7 +5,7 @@
     ㄴ 누구나 주문 생성 (insert)
    ════════════════════════════════════════════════════════════════ */
 
-import { createClient } from '@/lib/supabase/server' // 서버용
+import { createClient } from '@/lib/supabase/server' // server: route.ts 안에서 (서버에서) 호출
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 

@@ -772,8 +772,90 @@ const purchase = usePurchase()                                // 구조분해 X 
 
 ---
 
+## 19. ⭐ await=기다림 · 요청↔응답 왕복(부메랑) · fetch는 400도 정상수신 · body는 같은 내용 다른 모양 (2026-07-16 복습)
+
+### ① `await` = "서버"가 아니라 "**기다림**" ⭐ (오늘 큰 깨달음)
+
+- 헷갈림: "브라우저=fetch, 서버=await"? ❌ → `await`는 **누구(주체)가 아니라 "느린 일 기다려"라는 동작**.
+- **반례로 스스로 확인**: 서버 코드에도 `await` 있음 (`await request.json()`, `await createPurchase()`). "await=서버"면 말이 안 됨.
+- 진짜 기준 = **"바깥(네트워크·DB·파일) 다녀오는 느린 일이냐"**:
+
+| 작업 | 느림? | await |
+| --- | --- | --- |
+| `fetch(...)` (네트워크) | 느림 | ✅ |
+| `request.json()`·`res.json()` (스트림 읽기) | 느림 | ✅ |
+| `createPurchase()` (DB) | 느림 | ✅ |
+| `JSON.stringify()`·값 꺼내기·곱셈 | **빠름(메모리)** | ❌ |
+
+- 판별 요령: **"바깥 다녀오냐?"** 다녀오면 await, 내 안에서 즉시 끝나면 안 붙음. (심부름 vs 책상 위 처리)
+
+### ② 요청 ↔ 응답은 **왕복 한 쌍** 🪃 (오늘 핵심)
+
+- **던진 손(`fetch`)으로 돌아온다.** 부메랑처럼 요청 보낸 놈한테 답이 감.
+- 역할 분리:
+
+| | 누구/무엇 |
+| --- | --- |
+| return **보내는** 주체 | 서버 (`POST` 함수) |
+| return **받는** 주체 | 요청 보낸 `fetch` |
+| 받은 답 **담기는 곳** | `res` 변수 |
+
+- **서버가 fetch를 추적하지 않음** — `request` 봉투에 **반송주소가 이미 있고 + 연결(전화선)이 살아있어서** 자동으로 돌아감. (전화 걸면 대답이 내 전화기로 들리는 것 ☎️)
+
+### ③ `fetch`는 400도 **"정상 수신"** ⭐ (함정)
+
+- `fetch` 입장 = "답장 **받기만** 하면 성공". 그래서 **400·500도 에러 안 던지고** 그냥 `res`에 담아옴.
+- 그래서 400이든 201이든 **`fetch` 줄은 항상 먼저 실행됨** → 그 다음 판단.
+- 400인지 아닌지 판단은 **내가 직접** `if (!res.ok)`로:
+  ```
+  ① const res = await fetch(...)   // 400 봉투도 정상 수신 (fetch 성공)
+  ② if (!res.ok) {                 // 겉면 도장(status) 확인 → 400이면 진입
+       const { error } = await res.json()   // 봉투 열어 error value 꺼냄
+       throw new Error(error)                // → isError
+     }
+  ```
+- ⚠️ 400 ≠ 401. **400=요청 잘못**, 401=로그인 안 됨. (다른 뜻)
+
+### ④ `NextResponse.json(내용, 상태)` = 봉투 포장 ↔ 개봉
+
+- `return NextResponse.json({ error: '...' }, { status: 400 })`
+  - 1번 인자 `{error}` = 봉투 **속 내용** (⚠️ 요청 `body`가 아님! 서버가 새로 만든 **답장 내용**)
+  - 2번 인자 `{status:400}` = 봉투 **겉면 도장**
+- 브라우저가 뜯는 짝: `res.ok`(겉면) + `res.json()`(속). **포장 ↔ 개봉** 대칭.
+
+### ⑤ `.json()` 가족 — 받으면 항상 문자열→객체
+
+| 코드 | 방향 | 언제 |
+| --- | --- | --- |
+| `JSON.stringify()` | 객체 → 문자열 | 브라우저가 **보낼 때** |
+| `request.json()` | 문자열 → 객체 | 서버가 **받을 때** |
+| `res.json()` | 문자열 → 객체 | 브라우저가 **답장 받을 때** |
+
+- 네트워크는 **문자만** 나름 → 나갈 땐 누르고(stringify), 들어올 땐 푼다(.json()).
+- `request.json()`·`res.json()`이 **같은 방향**인 이유 = 둘 다 "**받는** 쪽"이라서.
+
+### ⑥ `const { error }` = key로 꺼내 **value**를 담음
+
+- `{ error: '필수 항목을...' }` 에서 `const { error }` → `error` 변수 = **value('필수 항목을...')**.
+- 구조분해 = **key 이름 대고 → 그 value 꺼내** 같은 이름 변수에 담기. (key:value 쌍 전체가 아니라 value만)
+
+### ⑦ ⚠️ 두 `body`는 같은 내용, 다른 모양·역할 (함정)
+
+- 브라우저 `body: JSON.stringify(input)` vs 서버 `const body = await request.json()`
+
+| | 브라우저 `body:` | 서버 `const body` |
+| --- | --- | --- |
+| **내용(데이터)** | 주문 정보 | 주문 정보 → **같음** ✅ |
+| **모양** | 문자열 | 객체 → 다름 |
+| **역할** | fetch 옵션의 **key(칸)** | **변수** → 다름 |
+
+- 같은 주문 데이터가 **포장만 바꿔가며 왕복**: `input(객체)` →`stringify`→ 문자열 →네트워크→ 문자열 →`request.json()`→ `body(객체)`.
+- `stringify`는 **네트워크 건너는 임시 문자열 모양**일 뿐, 데이터가 바뀐 게 아님. (택배 진공포장 📦 → 도착해서 뜯으면 같은 물건)
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
-**`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화.**
+**`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화. `await`는 "느린 일 기다려", 답은 던진 손(fetch)의 `res`로 돌아온다(🪃), `fetch`는 400도 정상 수신이라 `if(!res.ok)`로 내가 판단.**
 
 ---
 
