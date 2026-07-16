@@ -854,6 +854,63 @@ const purchase = usePurchase()                                // 구조분해 X 
 
 ---
 
+## 20. ⭐ React Query = `throw`(사건)를 `isError`(상태)로 번역 → 컴포넌트는 읽어서 시각화 (2026-07-16 복습)
+
+### ① `throw`는 컴포넌트로 직접 안 감 — React Query가 받는다
+
+- `postPurchase`를 **부른 건 React Query**(`mutate()` 내부에서 실행). throw는 "부른 쪽"으로 → **React Query한테** 던져짐.
+  ```
+  purchase.mutate(데이터)
+     ↓ React Query가 내부에서 try/catch로 감싸 실행
+     try { postPurchase(데이터) }   ← throw!
+     catch (err) { ... }            ← ★ React Query가 잡음 (컴포넌트 아님)
+  ```
+
+### ② 잡은 뒤 = 사건(event)을 상태(state)로 **번역** (가공 아님)
+
+| 사건(event) | → 상태(state) |
+| --- | --- |
+| `throw` | `isError=true`, `error=메시지` |
+| 정상 `return` | `isSuccess=true`, `data=결과` |
+| 실행 중 | `isPending=true` |
+
+- 내용(에러 메시지)은 그대로. **"던졌다"는 순간을 → "에러 상태다"라는 계속 읽는 플래그로** 바꾼 것뿐. → "가공"보다 **"번역/표준화"**.
+
+### ③ 컴포넌트는 상태판을 **읽어서 그림** (page.tsx 263줄)
+
+```jsx
+{(purchase.isError || payment.isError) && (      // ① 언제: 하나라도 에러면
+  <Text ...>
+    {(purchase.error ?? payment.error)?.message}  // ② 뭘: 발생한 에러의 message
+  </Text>
+)}
+```
+- `A ?? B` = A 있으면 A, 없으면 B (발생한 쪽 에러 집기)
+- `?.message` = 에러 객체에서 message 꺼냄 (없으면 undefined, 안전)
+- ⚠️ 여기는 throw가 **도착**하는 곳이 아니라, React Query가 저장해둔 상태를 **읽어 표시**하는 곳(거울 🪞).
+
+### ④ throw한 메시지가 화면까지 오는 길 🔗
+
+```
+throw new Error('주문에 실패했습니다.')
+   ↓ React Query가 잡아서
+purchase.error = Error { message: '주문에 실패했습니다.' }
+   ↓ re-render → JSX가 읽음
+purchase.error?.message  →  '주문에 실패했습니다.'
+   ↓
+화면에 빨간 글씨
+```
+- 내가 `throw new Error(메시지)`에 넣은 그 메시지 = `purchase.error.message` = 화면 텍스트. **한 줄로 연결.**
+
+### ⑤ ⭐ 이게 React Query 존재 이유 — 3결과를 상태로 포장
+
+- 비동기 결과는 딱 3가지: **대기 / 성공 / 실패**. RQ 없으면 컴포넌트마다 `useState`+`try/catch`로 직접 관리(지저분).
+- RQ가 대신 표준 상태로 배선 → 컴포넌트는 `isPending`·`isError`·`isSuccess`·`data`·`error` **읽기만** 하면 됨.
+- 그래서 `useMutation`을 "**배선**"이라 부름 = postPurchase의 throw/return을 **컴포넌트가 읽기 좋은 상태로 연결**.
+- 비유 📋: React Query = **중간 관리자**. 알바(postPurchase)가 "에러!" 소리치면(throw) → 관리자가 대신 받아 **상태판**에 적고(isError) → 사장(컴포넌트)은 소리 안 듣고 **상태판만** 봄.
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화. `await`는 "느린 일 기다려", 답은 던진 손(fetch)의 `res`로 돌아온다(🪃), `fetch`는 400도 정상 수신이라 `if(!res.ok)`로 내가 판단.**
 
