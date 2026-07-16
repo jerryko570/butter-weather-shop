@@ -65,6 +65,7 @@ export default function ProductDetailPage() {
   const handlePurchase = () => {
     // mutate(데이터) 발사!
     purchase.mutate(
+      // purchase: 상자 | .mutate: 상자에서 mutate라는 도구를 꺼낸 다음 -> (): 실행
       {
         product_id: product.id,
         product_name: product.name,

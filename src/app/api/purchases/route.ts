@@ -7,8 +7,13 @@ import { createPurchase } from '@/services/purchase.service'
 import type { CreatePurchaseInput } from '@/types/purchase'
 
 export async function POST(request: Request) {
+  //                        ㄴ HTTP 정보 전체 (헤더, body 문자열 + method) , 아직 안뜯음
   try {
     const body = (await request.json()) as CreatePurchaseInput
+    //                         ㄴ 여기서 body 문자열이 꺼내짐
+    // await: body는 네트워크로 조금씩 흘러 들어옴 (스트림) -> 다 도착할 때 까지 기다려야 함
+    // 받은 걸 담는 그릇
+    // 요청과 응답은 한쌍 (왕복)
 
     if (
       !body.product_id ||
@@ -20,6 +25,9 @@ export async function POST(request: Request) {
         { error: '필수 항목을 모두 입력해주세요.' },
         { status: 400 } // createPurchase까지 못감
       )
+      // return: 값을 부른 쪽으로 돌려보낸다.
+      // NextResponse.json({error}, 400)이 네트워크를 타고 되돌아가서 브라우저의 res에 담김
+      // 서버가 return한 답장 = 브라우저가 받은 res
     }
 
     const purchase = await createPurchase(body)
