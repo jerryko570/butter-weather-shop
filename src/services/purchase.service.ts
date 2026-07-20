@@ -1,42 +1,39 @@
 /* ════════════════════════════════════════════════════════════════
-    insert (createPurchase): RLS 거쳐도 통과됨 (프리패스 정책)
-    ㄴ RLS에 주문 넣기(insert)는 허용 정책이 있어서 createClient로도 문을 통과함
-    ㄴ 진짜 방어선은 돈이 움직이는 곳에 있음
-    ㄴ 누구나 주문 생성 (insert)
+   ▌ 코드 원본 ─ 주석 없이 실제로 돌아가는 코드
    ════════════════════════════════════════════════════════════════ */
 
-import { createClient } from '@/lib/supabase/server' // server: route.ts 안에서 (서버에서) 호출
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
+// createPurchase (동사) : 만들다 (함수)
+// createdPurchase (명사) : 결과물
 export async function createPurchase(
   input: CreatePurchaseInput
 ): Promise<Purchase> {
   const supabase = await createClient()
 
-  const paymentId = crypto.randomUUID() // 상자(crypto).함수(randomUUID) -> 켜면 랜덤 아이디 나옴
+  const paymentId = crypto.randomUUID()
+  //      ㄴ 나온 결과값을 넣는다     ㄴ () 붙음 -> 지금 실행 -> 결과가 튀어나옴 (문자열을 담음) : 결제아이디
 
   const { data, error } = await supabase
+    // 전송 -> supabase 안에서 쿼리체인 -> SQL로 변환 -> Postgres 실행 -> 결과를 {data, error} 한 객체로 포장해 돌려줌
+    // 한덩어리의 객체를 전달 받은게 아닌, createPurchase가 깔끔하게 정리한 결과 하나를 받음
     .from('purchases')
     .insert({
-      // 넣어!
-      payment_id: paymentId, // server (cryto.randomUUID())
-      product_id: input.product_id, // user (input)
-      product_name: input.product_name, // user
-      quantity: input.quantity, // user
-      price_krw: input.price_krw, // user
-      price_usd: input.price_usd, // user
-      total_price: input.price_krw, // server (input 값으로 계산 )
-      status: 'pending', // server (고정값: 걸제대기)
+      payment_id: paymentId,
+      product_id: input.product_id,
+      product_name: input.product_name,
+      quantity: input.quantity,
+      price_krw: input.price_krw,
+      price_usd: input.price_usd,
+      total_price: input.price_krw,
+      status: 'pending',
     })
-    .select() // 자동 생성값 도로 줘!
-    .single() // 객체만!
-
-  // 쿼리체인 사용 이유 : 이어 붇니는 이유는 주문서 한 장을 조금씩 채우기 때문. 각각 따로 DB에 갔다 오는게 아님 -> 한 장의 주문서에 요구사항을
-  // 하나씩 붙여서 마지막에 한번에 await가 DB로 쏨응
+    .select()
+    .single()
 
   if (error) throw error
-  // error는 catch (error)로 따로 받음
   return data as Purchase
 }
 
@@ -90,6 +87,25 @@ export async function markPurchaseCancelled(paymentId: string): Promise<void> {
 
 
    ─────────────────────────────────────────────
+   ★★ insert는 RLS "프리패스" — 진짜 방어선은 돈이 움직이는 곳
+   ─────────────────────────────────────────────
+   · createPurchase의 insert = RLS에 "주문 넣기 허용" 정책이 있어서
+     일반 createClient로도 문을 통과함 → 누구나 주문 생성(insert) 가능
+   · 왜 느슨하게? 주문 "생성"만으론 돈이 안 움직임 (status: pending일 뿐)
+   · ★ 진짜 방어선은 돈이 확정되는 곳(update: paid) → 거긴 RLS가 막고 admin만 통과
+   → 정리: insert 문턱은 낮게(프리패스), update 문턱은 높게(admin 전용)
+
+
+   ─────────────────────────────────────────────
+   ★ createClient()에 await 붙는 이유 = 쿠키 읽기 (네트워크 X)
+   ─────────────────────────────────────────────
+   const supabase = await createClient()
+   · 여기서 DB에 가는 게 아님. 서버 클라이언트가 "쿠키(cookie)"를 읽어야 해서 await
+   · 실제 DB 왕복은 그 연장을 써서 .insert()/.select() 할 때 (아래 await supabase…) 일어남
+   → 같은 await라도: createClient=쿠키 읽기 / await supabase.…=DB 왕복 (원인 다름)
+
+
+   ─────────────────────────────────────────────
    ★ 이 파일의 핵심: 클라이언트 2종 (server vs admin)
    ─────────────────────────────────────────────
    · createClient()      = 서버용 일반 클라이언트 → RLS 적용됨 (insert/select에 사용)
@@ -104,18 +120,36 @@ export async function markPurchaseCancelled(paymentId: string): Promise<void> {
 
 
    ─────────────────────────────────────────────
+   ★ insert 필드는 누가 채우나 — server vs user
+   ─────────────────────────────────────────────
+     payment_id   ← server  (crypto.randomUUID())
+     product_id   ← user    (input)
+     product_name ← user    (input)
+     quantity     ← user    (input)
+     price_krw    ← user    (input)
+     price_usd    ← user    (input)
+     total_price  ← server  (input 값으로 계산)
+     status       ← server  (고정값 'pending')
+   → user(손님이 보낸 것)와 server(내가 만든/정한 것)를 한 행에 섞어 저장
+     (돈·상태 관련은 server가 정함 = 손님이 못 건드림)
+
+
+   ─────────────────────────────────────────────
    ★ .insert → .select() → .single() — 3단이 각각 왜 필요한가
    ─────────────────────────────────────────────
-   .insert(...)            "이 데이터 넣어줘"
-                           → 저장은 하는데 뭘 저장했는지 안 돌려줌 (완료 처리만)
+   .insert(...)            "이 데이터 넣어줘" → 저장은 하나 뭘 저장했는지 안 돌려줌
    .select()               방금 저장된 그 줄을 도로 꺼내서 줌
-                           → 왜? 저장돼봐야 알 수 있는 값이 있음 (id, created_at 등
-                             DB가 자동으로 채우는 값) → 완성된 주문 1건을 손에 쥐려고
+                           → id, created_at 등 "저장돼봐야 아는 DB 자동값" 때문
    .single()               원래 결과는 배열 → 상자 벗기고 객체 하나로
 
    결과 모양 비교
-     .select()            → [{ id, payment_id, … }]   배열(상자 안에 하나)  → data[0].id
-     .select().single()   → { id, payment_id, … }     객체(알맹이만)        → data.id ✅
+     .select()            → [{ id, payment_id, … }]   배열  → data[0].id
+     .select().single()   → { id, payment_id, … }     객체  → data.id ✅
+
+   ★ 왜 점(.)으로 이어 붙이나 (쿼리 체인)
+     각각 따로 DB에 갔다 오는 게 아님. "주문서 한 장"을 조금씩 채우는 것.
+     .from → .insert → .select → .single 로 요구사항을 쌓고,
+     마지막에 await 한 번으로 DB에 쏜다.
 
 
    ─────────────────────────────────────────────
@@ -132,31 +166,32 @@ export async function markPurchaseCancelled(paymentId: string): Promise<void> {
    1. createPurchase — 주문을 'pending'으로 저장
    ─────────────────────────────────────────────
    export async function createPurchase(input): Promise<Purchase> {
-     const supabase = await createClient()          // 서버용(RLS 적용)
+   // · input = 매개변수(받는 곳). route.ts가 준 인자(넣는 곳)를 여기서 받음
+     const supabase = await createClient()          // 서버용(RLS 적용) / await = 쿠키 읽기
 
      const paymentId = crypto.randomUUID()
-     // · crypto = 브라우저·서버에 기본 내장된 "도구상자" (보안/랜덤 관련)
-     //   crypto.randomUUID = 그 상자 안의 도구를 가리킴 → () = 실행!
-     // · 결제 고유번호 생성 (충돌 없는 랜덤 ID) — "서버에서 만든 값"
-     // · PortOne 결제창에 paymentId로 그대로 넘김
-     // · 결제 끝난 뒤 "이 결제가 그 주문 맞아?" 매칭하는 열쇠
+     // · crypto = 브라우저·서버 양쪽에 기본 내장된 "도구상자" (전역 객체)
+     //     서버(Node, route.ts, service)에도 있어서 여기서 써도 이슈 없음
+     //   crypto.randomUUID = 상자 안 도구(랜덤 UUID 기계) → () = 실행 스위치
+     //   결과 = 36글자 랜덤 고유번호 (충돌 없는 ID) — "서버에서 만든 값"
+     // · payment_id = 주문 ↔ PortOne 결제를 잇는 열쇠
      //   (route.ts의 body엔 없던 값 → 여기서 덧붙여 저장)
 
-     const { data, error } = await supabase
-     // · supabase 응답을 { data, error } 객체 하나에 담아 돌려줌 → 구조분해로 꺼냄
+     const { data, error } = await supabase   // ★ 이 await가 진짜 DB 왕복
      //   성공이면 error = null / 실패면 data = null
        .from('purchases')
        .insert({
-         payment_id: paymentId,      // DB칸(snake) : JS값(camel)
-         ...주문정보,
-         status: 'pending',
+         payment_id: paymentId,      // DB칸(snake) : JS값(camel)  / server 발급
+         ...주문정보(user),           // product_id·name·quantity·price = 손님 input
+         total_price: input.price_krw, // server 계산값
+         status: 'pending',          // server 고정값
        })
-       .select()      // 방금 넣은 행을 되돌려 받기 (id·created_at 등 자동값 포함)
+       .select()      // 자동 생성값(id·created_at) 도로 받기
        .single()      // 배열 벗기고 객체 1개로
 
      if (error) throw error
-     // · "supabase가 에러 줬네? 난 처리 안 하고 던진다 — 나를 부른 놈(route.ts)한테"
-     // · throw 즉시 createPurchase는 멈춤(튕김) → route.ts의 catch가 받아 500
+     // · "supabase가 에러 줬네? 난 처리 안 하고 던진다 — 나를 부른 route.ts한테"
+     // · throw 즉시 createPurchase 멈춤(튕김) → route.ts의 catch가 받아 500
      return data as Purchase   // ← 이 return이 route.ts의 purchase 변수로 돌아감
    }
    // ★ 여기선 아직 돈 안 받음(pending). 실제 결제 확정은
@@ -182,7 +217,7 @@ export async function markPurchaseCancelled(paymentId: string): Promise<void> {
    3. markPurchasePaid — 'paid'로 확정 (service role)
    ─────────────────────────────────────────────
    export async function markPurchasePaid(paymentId): Promise<void> {
-     const admin = createAdminClient()               // ★ RLS 우회 (위 ⚠️ 참고)
+     const admin = createAdminClient()               // ★ RLS 우회 (진짜 방어선 지점)
      const { error } = await admin
        .from('purchases').update({ status: 'paid' }).eq('payment_id', paymentId)
      if (error) throw error
@@ -208,39 +243,44 @@ export async function markPurchaseCancelled(paymentId: string): Promise<void> {
    상태 흐름 (status 라이프사이클)
    ─────────────────────────────────────────────
    createPurchase        결제 검증(서버)           결제 취소(서버)
-       │                      │                        │
+       │  insert=프리패스     │  update=admin만        │  update=admin만
        ▼                      ▼                        ▼
    [pending] ──────────▶ [paid]                  [cancelled]
-   (주문 생성,           (markPurchasePaid,        (markPurchaseCancelled,
+   (누구나 생성,          (markPurchasePaid,        (markPurchaseCancelled,
     돈 아직 X)            service role)             service role)
 
 
    ─────────────────────────────────────────────
    헷갈릴 때 메모
    ─────────────────────────────────────────────
+   · insert = RLS 프리패스(누구나 주문 생성) / update = 돈 움직임 → admin만
+       진짜 방어선은 pending 생성이 아니라 paid 확정 쪽
+
+   · await 두 종류 (같은 파일 안에서도)
+       await createClient()  → 쿠키 읽기 (네트워크 X)
+       await supabase.…      → 실제 DB 왕복
+
+   · insert 필드 출처: server(payment_id·total_price·status) vs user(input 나머지)
+       돈·상태는 server가 정함 = 손님이 못 건드림
+
    · createClient(server) vs createAdminClient
        insert/select = 서버 일반(RLS 적용)  /  update = admin(RLS 우회)
-       → "검증 끝난 신뢰 작업"만 우회, 나머지는 RLS로 막는다
 
    · anon으로 RLS 막힌 update = 조용한 0건 실패 (에러 안 나고 안 바뀜) → 함정
 
-   · .insert / .select() / .single()
-       insert만  → 저장은 되나 결과 안 줌
-       + select  → 저장된 행 도로 받기 (id·created_at 등 DB 자동값 확인 가능)
-       + single  → 배열 [{…}] 벗겨 객체 {…} 로 → data.id 로 바로 접근
+   · 쿼리 체인(.from.insert.select.single) = 주문서 한 장 채우기
+       각각 DB 왕복 아님. 다 쌓은 뒤 마지막 await 한 번에 쏨
 
-   · snake_case(왼쪽 키) = DB 칸 이름(스키마가 정함, 고정)
-     camelCase(오른쪽 값) = 내 JS 변수(내가 지음, 변경 가능)
+   · .insert / .select() / .single()
+       insert만→결과 없음 / +select→자동값 도로 받기 / +single→배열 벗겨 객체
+
+   · snake_case(왼쪽 키)=DB 칸 이름(고정) / camelCase(오른쪽 값)=내 JS 변수
 
    · crypto = 내장 도구상자 / crypto.randomUUID = 그 안의 도구 / () = 실행
-
-   · payment_id = crypto.randomUUID()
-       주문 ↔ PortOne 결제를 잇는 열쇠. 생성은 createPurchase 한 곳에서만.
 
    · throw vs return null
        createPurchase/mark…  → 실패면 throw (있어야 하는 작업)
        getPurchaseByPaymentId → 실패면 null (없을 수도 있는 조회)
 
-   · throw는 "나를 부른 쪽"으로 던진다
-       service가 throw → route.ts의 catch가 받음 → 500 응답
+   · throw는 "나를 부른 쪽"으로 던진다 → route.ts catch → 500
    ════════════════════════════════════════════════════════════════ */

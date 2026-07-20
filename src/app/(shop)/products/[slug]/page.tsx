@@ -18,13 +18,11 @@ export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const router = useRouter()
   const { locale } = useT()
-  const { data: product, isLoading, error } = useProduct(slug) // 읽기 / 구조분해 O (바로 쪼개기)
-  //       ㄴ supabase return data -> ReactQuery : queryFn -> return 받아서 꾸러미 data 칸에 담음 (배달부)
-  //       ㄴ> page가 그 data를 꺼내서 -> product로 이름을 변경해 씀
+  const { data: product, isLoading, error } = useProduct(slug)
+  // React Query  throw를 "잡아서" → isError=true, error=Error 로 번역 -> 리랜더링 -> page.tsx (UI)
+  // postPurchase가 throw -> reactQuery가 catch -> 상태로 번역
 
   const purchase = usePurchase()
-  // 쓰기 & 구조분해 X
-  // 안쪼개고 통째로 purchase에 둠. 나중에 purchase.mutate 처럼 점으로 꺼내 쓰기 위함. 이름 충돌 회피
   const payment = usePayment()
 
   const [quantity, setQuantity] = useState(1)
@@ -63,9 +61,9 @@ export default function ProductDetailPage() {
   }
 
   const handlePurchase = () => {
-    // mutate(데이터) 발사!
+    // 배선 (setup) - 딱 한번 -> usePurchase.ts 안에서 -> useMutation({}) :  mutate에 postPurchase 연결
+    // 사용자 데이터 (재료) -> postPurchase - DB로 감
     purchase.mutate(
-      // purchase: 상자 | .mutate: 상자에서 mutate라는 도구를 꺼낸 다음 -> (): 실행
       {
         product_id: product.id,
         product_name: product.name,
@@ -73,9 +71,17 @@ export default function ProductDetailPage() {
         price_krw: product.price_krw * quantity,
         price_usd: product.price_usd ? product.price_usd * quantity : null,
       },
+
+      // 인자 2는 전송 X | 브라우저에 가만히 대기하고 인자 1 처리가 성공하면 그때 실행됨
+      // 1. mutate(인자1,인자2) 호출 -> RQ가 인자 1을 postPurchase에 넣어 실행
+      // 2. postPurchase  fetch -> DB return res.json() <- 이 반환값 = createdPurchase
+      // 3. RQ가 그 반환값을 받음 (성공 판정)
+      // 4. RQ: 인자 2에 onSuccess (반환값) 실행
+      // 결론: postPurchase가 처리 끝내고 return한 결과 -> RQ가 그걸 onSuccess의 매개변수 (createdPurchase)에 주입
       {
         onSuccess: (createdPurchase) => {
           payment.mutate(createdPurchase, {
+            // mutate(데이터, {onSuccess})
             onSuccess: () => {
               trackEvent('purchase', {
                 product_id: product.id,
@@ -460,6 +466,21 @@ function ShippingBlock({
 
 
    ─────────────────────────────────────────────
+   ★ 구조분해 O vs X — 읽기는 쪼개고, 쓰기는 통째로
+   ─────────────────────────────────────────────
+   const { data: product, … } = useProduct(slug)   ← 읽기: 구조분해 O (바로 쪼개 씀)
+     · 지금 당장 값(product)이 필요 → { }로 꺼내 바로 사용
+
+   const purchase = usePurchase()                   ← 쓰기: 구조분해 X (통째로 둠)
+     · 안 쪼개고 통째로 purchase에 둠
+     · 왜? 나중에 purchase.mutate / purchase.isPending / purchase.isError 처럼
+       "점(.)으로 꺼내" 여러 개를 두루 쓰기 위함
+     · 덤: 이름 충돌 회피 (purchase.mutate vs payment.mutate — 각자 상자에 담아 구분)
+
+   → 값 하나만 바로 쓸 거면 구조분해 / 도구 여러 개를 점으로 꺼내 쓸 거면 통째로
+
+
+   ─────────────────────────────────────────────
    import 구역 (누가 뭘 하는지)
    ─────────────────────────────────────────────
    useParams   : 주소에서 값 꺼내기(읽기)  /  useRouter : 페이지 이동
@@ -480,12 +501,14 @@ function ShippingBlock({
 
    const router = useRouter()          // router.push('/')로 페이지 이동
    const { locale } = useT()           // 현재 언어 (상품명·설명 현지화)
-   const { data: product, isLoading, error } = useProduct(slug)
-   // · slug로 상품 조회 → useQuery 꾸러미 (data를 product로 이름 바꿔 꺼냄)
+   const { data: product, isLoading, error } = useProduct(slug)   // 읽기 → 구조분해 O
+   // · supabase의 return data → React Query가 queryFn 결과를 받아 꾸러미 data 칸에 담음(배달부)
+   // · page가 그 data를 꺼내 → product로 이름 바꿔(별칭) 씀
 
-   const purchase = usePurchase()
+   const purchase = usePurchase()      // 쓰기 → 구조분해 X (통째로)
    // · 주문 도구 꾸러미. "지금 도구를 받아야 하니까" ()로 실행 → 결과를 담는다 (함수 자체 X)
    // · ★ 이 호출 = useMutation이 postPurchase를 mutate에 "배선(연결)"하는 지점 → 여기서 배선 끝
+   // · 통째로 두는 이유 = purchase.mutate / .isPending 처럼 점으로 꺼내 쓰려고 (+이름 충돌 회피)
    const payment = usePayment()
    // · 결제 도구 꾸러미. 주문 생성 후 PortOne 결제창을 띄운다
 
@@ -523,6 +546,7 @@ function ShippingBlock({
    ─────────────────────────────────────────────
    const handlePurchase = () => {           // 주문 버튼 클릭 핸들러
      purchase.mutate(주문데이터, {           // ★ 배선된 postPurchase를 "실행"(방아쇠). 재-배선 아님
+     //  ↑ purchase(상자) . mutate(도구 꺼냄) ()(실행)
        onSuccess: (createdPurchase) => {     // ① 주문 생성 성공(payment_id 발급, 상태 pending)
          payment.mutate(createdPurchase, {   // ② 그 주문으로 PortOne 결제창 + 서버 검증
            onSuccess: () => {                // ③ 결제창 통과 + 검증까지 끝나야 "진짜 성공"
@@ -598,14 +622,17 @@ function ShippingBlock({
    ─────────────────────────────────────────────
    5. 헷갈릴 때 메모
    ─────────────────────────────────────────────
+   · 구조분해 O vs X
+       읽기(useProduct)  → { data: product } 바로 쪼갬 (지금 값이 필요)
+       쓰기(usePurchase) → const purchase = … 통째로 (점으로 여러 개 꺼내 씀 + 이름 충돌 회피)
+
    · 배선 vs 실행 (이 파일 최대 함정)
        usePurchase() 호출     = 배선(연결) 완료 — 렌더마다 여기서 한 번
        purchase.mutate(data)  = 배선된 postPurchase 실행 — 버튼 누를 때마다
        → mutate는 useMutation을 다시 만드는 게 아니라, 이미 연결된 함수의 방아쇠
 
-   · usePurchase() 에 () 붙인 이유
-       여긴 "실행 결과 꾸러미"(mutate·isPending·isError…)를 쓰려는 것
-       ↔ usePurchase.ts 안 mutationFn: postPurchase 는 () 없이 "함수 자체" 등록
+   · purchase.mutate(…) 뜯어 보기
+       purchase(상자) . mutate(도구 꺼냄) ()(실행)
 
    · onSuccess의 인자(createdPurchase)는 내가 넣는 게 아님
        mutationFn(postPurchase)의 return 값을 React Query가 자동으로 넘겨줌

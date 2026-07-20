@@ -911,6 +911,45 @@ purchase.error?.message  →  '주문에 실패했습니다.'
 
 ---
 
+## 21. ⭐ 인자→매개변수(body→input) 반복 · await는 대상이 각자 다름(DB/쿠키/네트워크) · createClient=연장 만들기 (2026-07-16 복습)
+
+### ① `createPurchase(body)` → `createPurchase(input)` = 인자→매개변수 (또 같은 패턴)
+
+```
+route.ts:  const purchase = await createPurchase(body)   // body = 인자(넣는 값)
+service:   export async function createPurchase(input)   // input = 매개변수(받는 그릇)
+```
+- 이름만 `body`→`input`, **내용은 같음**. 함수 경계 넘을 때마다 이름표만 갈아끼움.
+- 오늘 벌써 3번째 반복: `mutate(데이터)→postPurchase(input)` / `createPurchase(body)→(input)`.
+- **데이터 족보** 🧬: `input(브라우저)` →stringify→ 문자열 →`request.json()`→ `body(route)` →`createPurchase(body)`→ `input(service)`. 처음부터 끝까지 **같은 주문 데이터**, 이름만 바뀜.
+- `body`는 **2차 검증 통과한** 것만 도달 (문지기 통과값만 주방행).
+
+### ② ⚠️ `await`마다 이유(대상)가 다르다 — 다 "느린 일"이지만 대상은 각자
+
+| 코드 | await 대상 | 뭘 기다리나 |
+| --- | --- | --- |
+| `await createClient()` | **쿠키** | 요청의 쿠키(신분) 읽기 |
+| `await createPurchase(body)` | **DB** | insert 다녀옴 |
+| `await request.json()`·`res.json()` | **네트워크** | body 스트림 도착 |
+| `await fetch()` | **네트워크** | 서버 답장 왕복 |
+
+- ❌ "`await createPurchase`는 body가 스트림이라" → 틀림. **`createPurchase`가 안에서 DB에 insert하러 다녀와서**(느린 함수라서).
+- 규칙: **함수 안에 `await`(느린 일) 있으면 → 그 함수도 async → 부를 때도 `await`.** 안에 뭐가 있나 열어보면 이유가 보임.
+
+### ③ `createClient`는 **연장 만들기**지 DB 접속이 아님 (`lib/supabase/server.ts`)
+
+```
+export const createClient = async () => {
+  const cookieStore = await cookies()   // ★ 이 await의 정체 = 쿠키 읽기 (DB 아님)
+  return createServerClient(url, key, { cookies: ... })
+}
+```
+- `createClient()` = 쿠키에서 **신분을 읽어 supabase 연장(도구)을 조립**. 아직 DB 안 감.
+- 진짜 DB 왕복은 그 연장으로 `.insert()` 할 때. (리모컨 만들기 🔧 vs 리모컨으로 작동시키기)
+- 왜 쿠키? 서버 클라이언트가 **"누가 요청했나(로그인 상태)"**를 알아야 나중에 RLS 판단 가능 → 신분은 요청 쿠키에 있음. (Next.js 16의 `cookies()`는 비동기 API라 await)
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화. `await`는 "느린 일 기다려", 답은 던진 손(fetch)의 `res`로 돌아온다(🪃), `fetch`는 400도 정상 수신이라 `if(!res.ok)`로 내가 판단.**
 

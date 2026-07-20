@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   ▌ 코드 원본 ─ 주석 없이 실제로 돌아가는 코드
+   
    ════════════════════════════════════════════════════════════════ */
 
 import { NextResponse } from 'next/server'
@@ -7,14 +7,11 @@ import { createPurchase } from '@/services/purchase.service'
 import type { CreatePurchaseInput } from '@/types/purchase'
 
 export async function POST(request: Request) {
-  //                        ㄴ HTTP 정보 전체 (헤더, body 문자열 + method) , 아직 안뜯음
   try {
     const body = (await request.json()) as CreatePurchaseInput
-    //                         ㄴ 여기서 body 문자열이 꺼내짐
-    // await: body는 네트워크로 조금씩 흘러 들어옴 (스트림) -> 다 도착할 때 까지 기다려야 함
-    // 받은 걸 담는 그릇
-    // 요청과 응답은 한쌍 (왕복)
+    // 전송은 이미 request.json() 에서 성공함
 
+    // 검사 대상이 body안의 값들이지 전송됐는지가 아님 (필수 4개가 다 있나는 보는 것)
     if (
       !body.product_id ||
       !body.product_name ||
@@ -23,31 +20,26 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: '필수 항목을 모두 입력해주세요.' },
-        { status: 400 } // createPurchase까지 못감
+        { status: 400 }
       )
-      // return: 값을 부른 쪽으로 돌려보낸다.
-      // NextResponse.json({error}, 400)이 네트워크를 타고 되돌아가서 브라우저의 res에 담김
-      // 서버가 return한 답장 = 브라우저가 받은 res
     }
 
     const purchase = await createPurchase(body)
-    //    --변수A--                      --변수B--
-    //  결과가 담기는 곳                   함수에 넣는 곳
-    // const 주스 = 주스기(오렌지) / 오렌지: 주스기에 넣음. 주스: 주스기에 나온곳이 담기는 곳
+    // 대입 (=) 은 return으로 나온 값만 받음 | error는 return이 아니라 throw(비상구)로 나가서 =를 안거친다.
 
-    return NextResponse.json(purchase, { status: 201 })
+    return NextResponse.json(purchase, { status: 201 }) // 네트워크 전송 (성공 데이터 + 201)
+    // 서버 -> 브라우저 res
   } catch (error) {
-    // 던져진 error를 여기서 받음
-    // (createPurchase가 throw -> try 중단 -> catch로 점프 -> NextRespose.json({error}, 500) 실행
-    console.error('Purchase creation failed:', error)
+    // service의 원본 error가 여기에 들어옴
+    console.error('Purchase creation failed:', error) // 원본을 로그에만 남김
 
+    // 손님에겐 새로 만든 일반 메시지
     return NextResponse.json(
       { error: '주문 처리 중 오류가 발생했습니다.' },
       { status: 500 }
     )
   }
 }
-
 /* ════════════════════════════════════════════════════════════════
    ▌ 코드 + 주석 ─ 설명 달린 학습용 (실행 X, 읽기용)
    ════════════════════════════════════════════════════════════════
@@ -62,6 +54,19 @@ export async function POST(request: Request) {
      필수 4개 중 하나라도 비면 400(2차 방어선)을 돌려주고,
      다 있으면 createPurchase로 저장 → 201로 성공 응답,
      중간에 터지면 catch가 받아 500을 돌려준다.
+
+
+   ─────────────────────────────────────────────
+   ★ await가 두 번 나오는데 "이유가 다르다"
+   ─────────────────────────────────────────────
+   await request.json()      느린 이유 = 스트림
+       body가 네트워크로 "조금씩 흘러 들어옴" → 다 도착할 때까지 기다려야 함
+
+   await createPurchase(body)  느린 이유 = DB 왕복
+       스트림이 아니라, DB에 다녀오는 게 느림 (createPurchase 자체가 느린 함수)
+       → 부르는 쪽도 await로 "끝날 때까지" 기다림
+
+   → 공통점: 둘 다 "시간이 걸리는 일"이라 await. 원인만 다름(도착 대기 vs 작업 대기)
 
 
    ─────────────────────────────────────────────
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
    ★ 왜 또 포장하나?
      ②에서 푼 객체는 "서버 안에서만" 살아 있음. 네트워크를 다시 건널 땐
      또 문자열이어야 함 → 그래서 ④ 포장 #2, ⑤ 풀기 #2가 필요.
-   → 네트워크를 건널 때마다 [포장→풀기] 한 쌍이 붙는다.
+   → 네트워크를 건널 때마다 [포장→풀기] 한 쌍이 붙는다. (요청·응답은 한 쌍=왕복)
 
 
    ─────────────────────────────────────────────
@@ -143,14 +148,16 @@ export async function POST(request: Request) {
    // · export = Next.js가 이 함수를 찾아 라우팅하려고 내보냄 (내가 호출 X)
    // · request = 손님(브라우저)이 fetch로 보낸 요청 "전체" (method+headers+body 봉투)
    //   = Request 타입 모양을 한 객체 / "요청 처리 그 순간 채워지는 받는 손"
+   //   = HTTP 정보 전체(헤더 + body 문자열 + method), 아직 안 뜯음
    //   → Next.js가 자동으로 POST의 첫 매개변수에 끼워줌
 
      try {
        const body = (await request.json()) as CreatePurchaseInput
-       // · ★ 풀기 #1 — 문자열 → 객체 (손님이 stringify한 걸 서버에서 품)
-       // · 이 객체는 "서버 안에서만" 살아 있음
-       //     → 다시 네트워크 건널 땐 또 문자열로 포장해야 함 (아래 ④)
-       // · ★ await = 결과 즉시 X → "약속(Promise=교환권)"부터 받고, 준비되면 값 교환
+       // · ★ 풀기 #1 — 여기서 body 문자열이 꺼내짐 (문자열 → 객체)
+       //     받은 걸 담는 "그릇"이 body
+       // · 이 객체는 "서버 안에서만" 살아 있음 → 다시 네트워크 건널 땐 또 포장(④)
+       // · ★ await 이유 = 스트림: body는 네트워크로 조금씩 흘러 들어옴
+       //     → 다 도착할 때까지 기다려야 함 (요청·응답은 한 쌍=왕복)
        // · as CreatePurchaseInput = "이 모양일 거다" 타입만 약속 (검사 X)
 
        if (!body.product_id || !body.product_name || !body.quantity || !body.price_krw) {
@@ -158,6 +165,9 @@ export async function POST(request: Request) {
            { error: '필수 항목을 모두 입력해주세요.' },   // ← 본문: 문자열 됨 → res.json()으로 뜯어야 보임
            { status: 400 }                                // ← status: 문자열 X → res.ok로 바로 보임
          )
+         // · return = 값을 "부른 쪽"으로 돌려보냄
+         //   NextResponse.json({error}, 400)이 네트워크 타고 되돌아가 브라우저의 res에 담김
+         //   → 서버가 return한 답장 = 브라우저가 받은 res (createPurchase까진 못 감)
        }
        // · 필수 4개 중 하나라도 비면(|| falsy) → 400(Bad Request)
        // · ★ early return = POST 함수를 여기서 "즉시 종료" → 400을 손님(fetch)이 받음
@@ -166,10 +176,15 @@ export async function POST(request: Request) {
        //     어차피 에러 → DB 호출 낭비. 미리 걸러낸다
 
        const purchase = await createPurchase(body)
+       //     ──변수A──               ──변수B(인자)──
+       //   결과 담기는 곳             함수에 넣는 곳
+       //   (비유) const 주스 = 주스기(오렌지)
+       //          오렌지=넣음 / 주스=나와서 담김
        // · () = 함수를 "실행하는 스위치" → createPurchase를 지금 실행
        // · ★ 이 점프는 "같은 서버 안" 함수 호출 → 네트워크 X → 포장/풀기 불필요(객체 그대로)
+       // · ★ await 이유 = 스트림 아님, DB 왕복이 느려서. createPurchase 끝날 때까지 대기
        // · service가 payment_id 등 "서버에서 만든 값"을 덧붙여 저장
-       // · await가 그 함수의 return까지 "멈춰서 기다림" → return data가 이 줄로 돌아와 담김
+       // · return data가 이 줄로 돌아와 purchase에 담김
        // · ★ service가 throw한 error도 "이 줄로 되돌아옴" → 아래 catch로 빠짐
 
        return NextResponse.json(purchase, { status: 201 })
@@ -184,7 +199,7 @@ export async function POST(request: Request) {
          { error: '주문 처리 중 오류가 발생했습니다.' },
          { status: 500 }
        )
-       // · ★ createPurchase가 던지면(throw) → 그 에러가 여기 catch로 잡힘 → 500
+       // · ★ createPurchase가 throw → try 중단 → catch로 점프 → 여기서 500 응답
        //   (try 안 어디서든 터지면 여기로. 실제 에러는 로그로만, 손님엔 일반 메시지)
      }
    }
@@ -193,10 +208,19 @@ export async function POST(request: Request) {
    ─────────────────────────────────────────────
    헷갈릴 때 메모
    ─────────────────────────────────────────────
+   · await 두 번, 이유가 다름
+       request.json()      → 스트림(body가 조금씩 도착) 대기
+       createPurchase(…)   → DB 왕복(작업이 느림) 대기
+       공통 = "시간 걸리는 일"이라 await
+
+   · const A = 함수(B)  좌우
+       A(변수) = 결과 담기는 곳  /  B(인자) = 함수에 넣는 곳
+       (주스 = 주스기(오렌지): 오렌지 넣음 → 주스 나와 담김)
+
    · 포장/풀기는 왕복 4번
        ① stringify(브라우저) → ② request.json(서버)
        ④ NextResponse.json(서버) → ⑤ res.json(브라우저)
-       → 네트워크를 건널 때마다 [포장→풀기] 한 쌍. 객체는 그 안(한쪽)에서만 산다
+       → 네트워크 건널 때마다 [포장→풀기] 한 쌍. 객체는 그 안(한쪽)에서만 산다
 
    · 응답에서 문자열 되는 건 본문뿐
        body   → 문자열 → res.json()으로 뜯어야 보임
@@ -206,9 +230,8 @@ export async function POST(request: Request) {
        fetch(주소, …)     = 브라우저→서버, 네트워크 O (stringify/파싱 필요)
        createPurchase(…)  = 서버 안 함수 호출, 네트워크 X (객체 그대로, () = 실행)
 
-   · await = 결과 즉시 X → "약속(Promise)"부터 → 준비되면 값 교환
    · early return = 검증 실패 시 POST 함수 즉시 종료 (뒤로 안 감)
-   · throw(service) → 그 줄로 되돌아옴 → catch(route) → 500
+   · throw(service) → try 중단 → catch로 점프(route) → 500
    · 2차 방어선 = 위조 대비 + 헛된 DB 호출 낭비 방지
    · 요청 = method+headers+body  /  응답 = status+headers+body
    · export하는 이유 = Next.js가 이 함수를 찾아 라우팅하려고 (내가 직접 호출 X)
