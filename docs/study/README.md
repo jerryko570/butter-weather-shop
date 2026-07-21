@@ -68,6 +68,7 @@
 
 **▶ 다음 슬라이스 후보:**
 - **Zustand** — `useCart`/`cartStore`, 서버 안 가는 순수 클라이언트 전역 상태 (통로 어느 쪽도 아닌 새 패턴)
+  - 🔸 선행 워밍업 진행 중: [[09-immutable-warmup]] (불변+spread 완료 / map·filter·find·reduce 다음)
 - **결제 검증** — `usePayment` → `/api/payments/complete` → `markPurchasePaid`(**service role 우회**)
 - **낙관적 업데이트** — 캐시 직접 조작 (읽기+캐시 배웠으니 이제 가능). 어드민 상품 수정에.
 

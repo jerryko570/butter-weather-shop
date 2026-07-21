@@ -120,6 +120,34 @@ throw/return → RQ가 꾸러미 상태 갱신(data or error) → ★ 컴포넌�
 | 실패 | `throw error` | catch | error + isError | `error` → 빨간 글씨 |
 - 둘 다 RQ 내부 거쳐 꾸러미 갱신 + 리렌더. 차이는 성공만 **캐시 저장**.
 
+## 11. ⭐ 곁가지 — `useEffect` + 콜백 패턴 (같은 page.tsx)
+
+상세 페이지에 이 코드가 있음:
+```ts
+useEffect(() => {
+  if (!product) return
+  trackEvent('product_view', { product_id: product.id, ... })
+}, [product])
+```
+
+### useEffect = "렌더 끝난 뒤, 특정 값 바뀌면 실행할 부수효과"
+- **부수효과(side effect)** = 화면 그리기 외의 일 (분석 로그·API·타이머·구독). `trackEvent`(PostHog 조회 기록)가 이거.
+- **의존성 배열 `[product]`** = "product 바뀔 때만 콜백 실행".
+- 왜 렌더 본문에 직접 안 쓰나 = 본문은 렌더마다 여러 번 실행(수량·탭 바뀌면 리렌더) → 이벤트 뻥튀기. useEffect는 **product 바뀔 때만**.
+
+### `if (!product) return` = 읽기 캐시 흐름과 연결 🔗
+```
+첫 렌더:   product=undefined(로딩 중) → useEffect 실행되지만 return으로 스킵
+product 도착(리렌더): product=상품 → useEffect 재실행 → trackEvent 발사 ✅
+```
+- 08의 "undefined → 도착 → 리렌더"를 `useEffect[product]`가 낚아채 **로딩 완료 순간 딱 한 번** 기록.
+
+### ⭐ "콜백"의 정체 — 자동인 건 콜백이 아니라 프레임워크
+- **콜백 = "나중에 불러줘"라고 넘겨두는 함수** (수동, 스스로 안 돎).
+- **자동 트리거는 React가 함** — `[product]` 감시하다 바뀌면 콜백을 대신 부름.
+- 역할 분담: **나 = 할 일(콜백)+언제([deps]) 등록 / 프레임워크 = 때 되면 자동 호출.**
+- 계속 나온 패턴: `queryFn`(RQ가 부름)·`postPurchase`(mutate가 부름)·`onSuccess`(성공 시)·`useEffect 콜백`(deps 바뀔 때). **전부 "등록해두면 프레임워크가 부르는" 콜백.**
+
 ---
 
 ## 🔑 오늘의 핵심 한 줄
