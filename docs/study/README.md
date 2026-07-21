@@ -31,6 +31,7 @@
 | [[00-flow-map]] | 마스터 흐름 지도 | **"읽기냐 쓰기냐 / 통로①이냐 ②냐"** 두 질문 |
 | [[05-mutation]] | useMutation (쓰기 훅) | `mutationFn`=배선 / `mutate()`=방아쇠 |
 | [[06-route-handler]] | Route Handler (통로②) | fetch(손님) ↔ POST(가게), 포장↔풀기 |
+| [[08-read-cache]] | 읽기 슬라이스 + 캐시 | 통로①·자동·캐시(queryKey/staleTime)·RQ 내부 try/catch·리렌더 |
 
 ## 3단계 — 방법론 (어떻게 공부할까) 🧭
 
@@ -61,13 +62,14 @@
 
 ## ✅ 완주한 것 / ▶ 다음
 
-**완주 — 주문 쓰기 슬라이스 양방향 (서버 끝 ~ 화면 끝):**
-- 성공: `201` → `res` → React Query → `onSuccess(createdPurchase)` → `payment.mutate` → 성공 팝업
-- 실패: `400/500` → `res` → `throw` → React Query `isError` → 빨간 글씨
+**완주:**
+- 주문 쓰기 슬라이스 양방향 ([[06-route-handler]]): 성공→onSuccess→결제→팝업 / 실패→isError→빨간글씨
+- 읽기 슬라이스 + 캐시 ([[08-read-cache]]): 통로①·자동·queryKey/staleTime·RQ 내부 try/catch·리렌더
 
 **▶ 다음 슬라이스 후보:**
-- **결제 검증** — `usePayment`(PortOne 결제창) → `/api/payments/complete`(서버 검증) → `markPurchasePaid`(**service role 우회**). 위 8개 패턴이 반복돼 빠름.
-- **장바구니** — Zustand, 서버 안 가는 순수 클라이언트 상태 (통로 어느 쪽도 아닌 새 패턴)
+- **Zustand** — `useCart`/`cartStore`, 서버 안 가는 순수 클라이언트 전역 상태 (통로 어느 쪽도 아닌 새 패턴)
+- **결제 검증** — `usePayment` → `/api/payments/complete` → `markPurchasePaid`(**service role 우회**)
+- **낙관적 업데이트** — 캐시 직접 조작 (읽기+캐시 배웠으니 이제 가능). 어드민 상품 수정에.
 
 ---
 
