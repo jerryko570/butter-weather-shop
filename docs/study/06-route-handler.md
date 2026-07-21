@@ -950,12 +950,53 @@ export const createClient = async () => {
 
 ---
 
+## 22. ⭐⭐ 16단계 콜드 재현 — 주문 슬라이스 전체 (2026-07-20 스스로 재현 + 교정)
+
+> 페이지 클릭 → 서버 → DB → 왕복 → 화면까지, 기억만으로 16단계 재현한 것. (12/16 정확, 아래는 교정본)
+
+```
+1  const purchase = usePurchase()        훅 실행 → 꾸러미(연장통)를 purchase에 담음
+2  <button onClick={handlePurchase}>     사용자가 "구매하기" 클릭 → handlePurchase 깨움
+3  purchase.mutate({ ...주문데이터 })     연장통에서 mutate 꺼내 실행 (인자1=데이터)
+4  mutate 호출 → React Query가 postPurchase(데이터) 실행 → 데이터를 input 매개변수에 주입
+5  fetch(주소, {method,headers,body})     주소·http정보는 "인자(보내는 것)"
+                                          → 서버 답장(성공/실패)을 res에 "받아" 담음  ★
+6  body: JSON.stringify(input)            네트워크는 문자만 → 객체→문자열 포장
+   ─── 네트워크 (가는 길) ───
+7  route.ts  주소·method 매칭 → POST 실행 → Next.js가 request를 매개변수에 주입
+8  const body = await request.json()      도착한 문자열 body → 객체로 풀기
+9  2차 검증: body에 필수 4개 "있나/없나"만 검사 (비교 아님!)  ★
+             없으면 → NextResponse.json({error},400) 포장 → res로 (POST 종료)
+10 실패면 usePurchase: if(!res.ok) → await res.json() → 문자열→객체 → {error} 구조분해(value만)
+11 throw → React Query가 상태 갈아끼움 → isError=true → 컴포넌트가 읽어 빨간 글씨
+12 검증 통과 → const purchase = await createPurchase(body)
+13 createPurchase: createClient()(쿠키로 신분) → 쿼리체인 → await로 DB 발송
+                   → SQL 변환 → Postgres 실행 → {data,error} 한 객체로 돌려줌
+14 실패: if(error) throw error → route.ts catch(error)로 점프 → NextResponse.json(500) → res → 10번과 동일
+15 성공: return data → route.ts의 purchase 변수로 → NextResponse.json(purchase,201)
+        → res에 담김 → res.json()으로 문자열→객체
+   ─── 네트워크 (오는 길) ───
+16 React Query 성패 처리:
+     성공 → onSuccess(createdPurchase) → payment.mutate → (결제 성공) → setShowSuccess(true) 팝업
+     실패 → isError → (purchase.error ?? payment.error)?.message 빨간 글씨
+```
+
+### ★ 미끄러졌던 2곳 (방향 함정)
+- **5번 `res`** — `res`엔 "보내는 주소·http정보"가 아니라 **서버가 돌려준 답장(성공/실패 데이터)**이 담긴다. 주소·정보는 `fetch`의 **인자(나가는 것)**. → 나가는 것(인자) ↔ 들어오는 것(res)을 가르기.
+- **9번 2차 검증** — 브라우저 데이터와 서버 body를 **"비교"하는 게 아니다.** 둘은 같은 데이터. 검증은 받은 `body`에 **필수값이 있나/없나**만 본다.
+
+### 나머지 미세 교정
+- **3번** `mutate`는 `usePurchase()` "함수 안"이 아니라 그게 **돌려준 꾸러미 안**의 도구.
+- **14번** error는 catch로 "전달"이 아니라 **`throw`(던짐)** → 비상구로 점프. (500 봉투 메시지는 원본 아닌 새 일반 문구)
+
+---
+
 ## 🔑 오늘의 핵심 한 줄
 **`fetch('/api/purchases', {method:'POST', body:stringify(input)})`(손님) → `route.ts`의 `POST(request)`가 받아 `request.json()`으로 풀기 → 검증(2차 방어선) → `createPurchase`에 위임해 DB insert → `NextResponse.json(purchase,201)` 응답. 손님·가게는 한 통화의 양쪽 끝, 포장(stringify)↔풀기(json())로 대화. `await`는 "느린 일 기다려", 답은 던진 손(fetch)의 `res`로 돌아온다(🪃), `fetch`는 400도 정상 수신이라 `if(!res.ok)`로 내가 판단.**
 
 ---
 
 ## ▶ 다음에 여기서 시작
-- 돌아오는 길 **거의 완료** (섹션 11): `res` 응답 담김 → `res.ok`로 성공/실패 갈림 → 실패 `res.json()`으로 error 꺼내 `throw` / 성공 `res.json()` 반환.
-- **마지막 1조각**: `postPurchase`가 `throw`/`return`한 다음 → **React Query가 `onError`(에러 표시) / `onSuccess`(결제창)로** 넘기는 곳. (page.tsx의 mutate 콜백)
-- 그다음: `createPurchase` 서비스 안(payment_id 생성, insert)과 결제 검증(`markPurchasePaid`, service role) 흐름.
+- ✅ 주문 쓰기 슬라이스 **양방향 완주** (성공: onSuccess→결제→팝업 / 실패: isError→빨간글씨). 섹션 22에 16단계 콜드 재현.
+- ▶ **다음 슬라이스 = 결제 검증** — `usePayment`(PortOne 결제창) → `/api/payments/complete`(서버 검증) → `markPurchasePaid`(**service role 우회** = 새 개념). 로드맵은 [[README]].
+- 새 것 한 줄: insert·select는 **RLS 통과**했지만, update(결제확정)는 **RLS가 막아서 service role로 우회** — "돈 움직이는 곳만 특별히".
