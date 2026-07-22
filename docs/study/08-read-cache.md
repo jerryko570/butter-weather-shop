@@ -148,6 +148,75 @@ product 도착(리렌더): product=상품 → useEffect 재실행 → trackEvent
 - 역할 분담: **나 = 할 일(콜백)+언제([deps]) 등록 / 프레임워크 = 때 되면 자동 호출.**
 - 계속 나온 패턴: `queryFn`(RQ가 부름)·`postPurchase`(mutate가 부름)·`onSuccess`(성공 시)·`useEffect 콜백`(deps 바뀔 때). **전부 "등록해두면 프레임워크가 부르는" 콜백.**
 
+## 12. ⭐ `queryFn: async () => {}` 해부 — 정의 vs 실행, async 모자, `()` 입구
+
+헷갈리는 한 줄을 글자 단위로:
+```ts
+queryFn: async () => { const {data,error} = await supabase... }
+   ▲       ▲    ▲  ▲                        ▲
+ 이름표   모자  입구 화살표                  몸통(레시피)
+```
+- **`queryFn`** = 키(이름표). key엔 실행 괄호 못 붙임 → `queryFn(): value` ❌. (함수를 값으로 넣는 법: `queryFn: ()=>{}` 콜론 / `queryFn(){}` 메서드축약, 둘 다 **정의**)
+- **`async`** = 함수에 씌우는 "비동기 모자"(라벨). 함수 자체가 아님. 가리면 `()=>{}` 순수 화살표. "안에서 `await` 써도 돼" 능력만 추가.
+- **`()`** = 화살표 `=>` **왼쪽 괄호 = 매개변수 입구**(받을 재료 자리, 지금은 빔). 증거: 목록 훅은 `async ({pageParam=0})=>` 처럼 입구가 차 있음.
+- **`{ ... }` 몸통** = "실행 내용"❌ → **"실행될 때 이렇게 하라고 적어둔 레시피"**(정의). 이 줄 지난다고 `await` 발사 안 됨.
+
+### ★ 정의(레시피) vs 실행(방아쇠) — `()` 위치로 구분
+```
+async () => {}      ← 정의만 (=> 왼쪽 () = 매개변수 입구)
+foo()               ← 실행 (완성된 함수 "뒤에" 딱 붙는 () = 방아쇠)
+```
+- 그래서 `queryFn: async ()=>{}`는 **레시피를 RQ에 건넨 것.** 실제 요리(await 발사)는 **RQ가 나중에 `queryFn()`처럼 뒤에 실행 괄호를 붙일 때.** (섹션3·5의 "등록=배선"과 같은 말)
+- 계속 나온 콜백 전부 동일: `onSuccess: ()=>{}`·`useEffect(()=>{})`도 "정의만 넘김 → 프레임워크가 나중에 실행".
+
+## 13. ⭐⭐ 손질한 재료 → JSX 레이아웃에 꽂기 (3패턴)
+
+`const images=…` / `const isSoldOut=…`은 **재료 손질**(변수에 담기, 화면 X). 화면은 `return()` JSX의 **`{}` 구멍**에 재료를 꽂을 때 나옴.
+> 🎨 비유: `<h1>`=텍스트 레이어(틀), `{product.name}`=거기 연결된 동적 텍스트(스마트 오브젝트). 데이터 바뀌면 자동 갱신.
+
+**page 전체 = 이 3패턴의 반복:**
+
+### 패턴 ① 값 꽂기 — `{재료}`
+```jsx
+<Text as="h1">{localizedName(product, locale)}</Text>   // 이름
+{formatKRW(product.price_krw)}                           // 가격
+재고 {product.stock}개                                    // 숫자
+```
+→ "이 자리에 이 값을 찍어라." 기본.
+
+### 패턴 ② 조건부 — `조건 && <JSX>` / `조건 ? A : B`
+```jsx
+{images.length > 1 && ( <div>썸네일…</div> )}     // 참일 때만 그림
+{isSoldOut ? 'Sold Out' : 'Buy It Now'}          // 상황따라 A/B
+```
+→ `&&` = "왼쪽 참이면 오른쪽 JSX 그려라"(조건부 표시 레이어). 손질한 `isSoldOut`·`images`가 여기 쓰임.
+
+### 패턴 ③ 반복 — `배열.map(...)`
+```jsx
+{images.map((src, i) => ( <button key={src}><Image src={src}/></button> ))}
+```
+→ "배열 개수만큼 같은 컴포넌트 도장 찍기"(디자인 컴포넌트 인스턴스 여러 개). **빈 배열 `[]`로 손질해둔 덕에 이미지 0개여도 안전**(undefined.map 💥 방지).
+
+### 레이아웃(배치)은 태그 중첩 + Tailwind가 잡음 (재료와 별개)
+```jsx
+<div className="grid lg:grid-cols-2">   // 좌우 2단 = 레이아웃(네 강점)
+  <div>{/* 좌: 갤러리 */}</div>
+  <div>{/* 우: 정보블록 */}</div>
+</div>
+```
+→ **뼈대(레이아웃)는 손으로 짜고, 그 `{}` 구멍에 손질한 재료를 3패턴으로 꽂기.** 이게 데이터↔화면이 만나는 지점.
+
+## 14. 자주 나오는 JS 문법 3종 (page 읽다 계속 만남)
+
+```ts
+const images = product.images?.length ? product.images : []
+const isSoldOut = product.status === 'sold_out' || product.stock <= 0
+```
+- **`?.` (옵셔널 체이닝)** = "앞엣게 없으면 에러 말고 조용히 undefined"(노크하고 들어가기). `product.images.length`는 images 없으면 💥 / `product.images?.length`는 안전. → "없을지도 모르는 것" 파고들 때.
+- **`.length`** = 진짜 개수(숫자). 다만 `?` 앞 **조건 자리**에 놓이면 "0=거짓 / 1+=참"으로 한 번 더 읽힘. (개수 ≠ 참거짓, 두 단계 따로)
+- **`조건 ? A : B` (삼항)** = 한 줄 if-else. `images` 최종값은 `product.images` **또는** `[]` — **절대 undefined 아님**(중간 undefined는 판단용, 삼항이 `[]`로 걸러냄. 목적 = 아래 `.map` 안전).
+- **`||` (OR)** = "둘 중 하나만 참이어도 참". `isSoldOut` = 수동 품절(`status`) **또는** 자동 재고소진(`stock<=0`) 어느 쪽이든 걸리면 품절. `<= 0`은 0뿐 아니라 마이너스(데이터 꼬임)도 안전하게 품절.
+
 ---
 
 ## 🔑 오늘의 핵심 한 줄

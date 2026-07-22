@@ -7,6 +7,10 @@ import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
 async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {
   const res = await fetch('/api/purchases', {
+    //  ㄴ 한번에 하나만 (error, data)
+    // 성공이면, 201+purchase
+    // 실패면, 400/500 + error (catch throw)
+    // 나가는 것: fetch 인자로 나감 | 들어오는 것: res 서버 답장 (성공+실패)
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -15,13 +19,14 @@ async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {
   if (!res.ok) {
     const { error } = await res.json()
     throw new Error(error ?? '주문에 실패했습니다.')
+    // RQ: throw 됐네? 실패! isError = true, error = Error 담음 -> 상태를 갈아끼움
   }
 
-  return res.json()
+  return res.json() // 알맹이 꺼냄
   // 네트워크 전송은 이미 끝남 (브라우저 안에서 벌어지는 일)
   // res가 브라우저에 담긴 순간, 국경 넘기는 일은 끝남 -> 개봉 + 반환
   // 브라우저 안 -> 리액트쿼리 (로컬반환 X)
-  // 문자열 -> 객체 | return은 그 객체를 reactQuery에게 돌려줌 -> RQ가 onSuccess(createPurchase)
+  // 문자열 -> 객체 | return은 그 객체를 reactQuery에게 돌려줌 -> RQ가 onSuccess
 }
 
 export const usePurchase = () => {

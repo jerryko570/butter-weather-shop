@@ -1,3 +1,7 @@
+/* ════════════════════════════════════════════════════════════════
+   ▌ 코드 원본 ─ 주석 없이 실제로 돌아가는 코드
+   ════════════════════════════════════════════════════════════════ */
+
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { Product } from '@/types/product'
@@ -36,20 +40,17 @@ export const useProduct = (slug: string) => {
     queryKey: ['product', slug],
     queryFn: async () => {
       const { data, error } = await supabase
-        // 요청 주문서를 보냄
-        // anon_key 포함 -> 네트워크 -> supabase 서버 -> 요청 도착 -> SQL 변환 -> DB PostgresSQL
-        // SQL 실행 (RLS가 조건을 AND로 붙이고 통과한 행만 읽음)
-        // {data, error} 반환 -> 네트워크 -> 브라우저
-        // 리액트쿼리 포장 {data, isLoading} -> 컴포넌트 렌더
-        .from('products') // 테이블 지정하기 (만드는 건 create table (sql))
+        .from('products')
         .select('*')
         .eq('slug', slug)
-        .eq('is_active', true) // published(공개)만 — 초안은 상세도 안 보이게
-        .single() // 활성인 상품 1개
+        .eq('is_active', true)
+        .single()
+
       if (error) throw error
       return data as Product
     },
     staleTime: 1000 * 60 * 10,
+    // 데이터 있으면 (재방문) staleTime 판단 |
   })
 }
 
@@ -65,7 +66,63 @@ export const useProduct = (slug: string) => {
 
 
    ─────────────────────────────────────────────
-   ★ RLS (Row Level Security) — 이번 핵심
+   ★★ 캐시 = 바꿔치기 아님, queryKey마다 "칸이 쌓이는 보관함"
+   ─────────────────────────────────────────────
+   QueryClient(RQ 내부 메모리)
+     ├ ['product', 'keyring-a']  → { …상품A }     ← 칸 1
+     ├ ['product', 'bead-b']     → { …상품B }     ← 칸 2 (칸1 그대로 남음)
+     └ ['products', 'keyring']   → [ …목록 ]      ← 칸 3
+
+   · 다른 slug로 가면 → 새 칸 생성 (기존 칸은 남아 공존)
+   · 같은 slug로 재요청 → staleTime 체크 → 그 칸 내용만 갱신
+   · ★ 그래서 여러 상품을 오가도 각자 기억됨 (뒤로 가기 하면 즉시 뜸)
+
+   fresh vs stale
+     fresh(신선) : staleTime 안 지남 → 재요청 X, 저장된 걸 고대로 씀
+     stale(낡음) : 시간 지남 → 즉시 삭제·재요청은 아님. "낡음" 표시만 →
+                   트리거(재진입 등) 시 백그라운드로 갱신
+
+
+   ─────────────────────────────────────────────
+   ★ React Query 내부 실행 순서
+   ─────────────────────────────────────────────
+   queryKey  →  staleTime  →  queryFn
+   ① queryKey로 "그 칸이 캐시에 있나?" 확인
+   ② 있으면 staleTime 체크 → fresh면 여기서 끝 (queryFn 실행 X)
+   ③ 없거나 stale이면 → queryFn 실행 (네트워크 발사)
+   → 그래서 queryKey를 제대로 안 쓰면 캐시가 엉킨다 (②의 category 주의 참고)
+
+
+   ─────────────────────────────────────────────
+   ★ queryFn의 두 출구 → RQ가 받아서 처리
+   ─────────────────────────────────────────────
+   throw error   → 실패 출구 → RQ가 isError = true, error 칸에 담음
+   return data   → 성공 출구 → RQ가 data 칸 + 캐시(queryKey 자리)에 저장
+   · supabase는 결과를 { data, error } 한 덩어리로 포장해 보냄
+     → 개봉(구조분해)은 queryFn 안에서 내가 함
+   · if (error) throw / return data 는 네트워크 X — 같은 브라우저 안 함수 반환
+
+
+   ─────────────────────────────────────────────
+   ★★ 읽기(select) 한 번의 전체 왕복 (end-to-end)
+   ─────────────────────────────────────────────
+   [브라우저] 훅이 쿼리(주문서) 작성
+     → await 순간 발사: anon_key 포함해서
+        ─── 네트워크 ───
+   [supabase 서버] 요청 도착 → SQL로 변환 → DB(PostgreSQL)에서 SQL 실행
+        ★ 이때 RLS가 내 조건(where)에 자기 규칙을 "AND로 덧붙임"
+          예) where slug=… AND is_active=true  ← 여기에 RLS가  AND (RLS 정책)  추가
+          → 정책까지 통과한 행만 읽힘 (나머지는 조용히 숨김)
+     → { data, error } 반환
+        ─── 네트워크 ───
+   [브라우저] React Query가 포장 { data, isLoading, error, … } → 컴포넌트 렌더
+
+   ★ 핵심: RLS는 "행을 지우는" 게 아니라 내 쿼리에 조건을 AND로 더 붙이는 것
+     → 통과 못 한 행은 애초에 결과에 안 들어옴 (에러 아님, 그냥 안 보임)
+
+
+   ─────────────────────────────────────────────
+   ★ RLS (Row Level Security)
    ─────────────────────────────────────────────
    · 쿼리빌더(.from/.select/.eq…) = SQL 통역사 (지금은 JS로 "주문서" 조립 중,
      await 하는 순간 SQL로 번역돼 DB로 감)
@@ -116,24 +173,40 @@ export const useProduct = (slug: string) => {
    ─────────────────────────────────────────────
    2. useProduct — 상세 1개 한 줄씩
    ─────────────────────────────────────────────
+   // 화살표 함수는 원래 익명 — const에 담으면 이름이 생김
+   // (여기선 "정의"만. 실제 실행은 컴포넌트에서 useProduct(slug) 부를 때)
    export const useProduct = (slug: string) => {
      const supabase = createClient()
 
+     // 큰 그림: queryFn(비동기 화살표)이 supabase 체인을 await로 발사 → {data,error} 구조분해
+     //          그 queryFn을 RQ가 실행하고, return/throw가 RQ로 들어감
+     //          → RQ가 data는 캐시에, error는 isError로 처리
      return useQuery({
-       queryKey: ['product', slug],            // slug마다 따로 캐시
+       queryKey: ['product', slug],
+       // · slug마다 따로 칸 (다른 slug = 새 칸 생성, 기존 칸 공존)
+       // · 같은 slug 재요청 → staleTime 체크 → 그 칸 내용 갱신
+
        queryFn: async () => {
-         const { data, error } = await supabase
+         const { data, error } = await supabase   // supabase는 한 덩어리로 포장해 보냄
+         //     └ 구조분해(개봉)는 여기 queryFn에서
+         // ★ 왕복: anon_key → 네트워크 → supabase → SQL 변환 → PostgreSQL
+         //         → RLS가 조건 AND로 붙여 통과한 행만 → {data,error} → 네트워크 → RQ 포장
            .from('products')                   // 테이블 지정 (만드는 건 SQL의 create table)
            .select('*')
            .eq('slug', slug)                   // 이 slug인 행
            .eq('is_active', true)              // ★ 공개(published)만 — 초안은 상세도 안 보이게
            .single()                           // 딱 1개 객체로 (0개·2개+면 throw)
-         if (error) throw error
-         return data as Product                // 배열 아님, 객체 1개 (Product)
+
+         // ↓ 여기부턴 네트워크 X — 같은 브라우저 안에서 함수 반환일 뿐
+         if (error) throw error   // 실패 출구 → RQ → isError
+         return data as Product   // 성공 출구 → RQ → data 칸 + 캐시(['product', slug])에 저장
        },
-       staleTime: 1000 * 60 * 10,              // 10분 신선
+       staleTime: 1000 * 60 * 10,
+       // · 얼마나 신선하다고 믿을지: 1000ms × 60(1분) × 10 = 10분
+       // · 신선하면 재요청 X (캐시 그대로)
      })
    }
+   // ※ 객체의 { } = 옵션(키:값, 순서 무관) / 함수의 { } = 문장(위→아래 실행)
 
 
    ═══════════════════════════════════════════════════════════════
@@ -147,7 +220,7 @@ export const useProduct = (slug: string) => {
       → 요청·캐시·로딩/에러는 전부 React Query가 관리
 
    ② queryKey = 캐시 라벨
-      같으면 캐시 재사용 / 다르면 새 요청.
+      같으면 캐시 재사용 / 다르면 새 칸 생성 (덮어쓰기 아님, 공존)
       [주의] category를 꼭 넣어야 함 (빼면 필터 바꿔도 옛 캐시가 뜨는 버그)
 
    ③ queryFn = React Query가 "대신 실행"하는 함수
@@ -163,6 +236,7 @@ export const useProduct = (slug: string) => {
          앞 'category' = DB 컬럼명(고정) / 뒤 category = 받은 값('키링')
 
    ⑥ Supabase 응답 { data, error }
+      한 덩어리로 포장돼 옴 → queryFn에서 구조분해로 개봉
       한쪽이 값이면 다른 쪽은 null. (성공: error=null / 실패: data=null)
       [주의] Supabase는 자동 throw 안 함 → 내가 직접 if(error) throw
 
@@ -182,9 +256,11 @@ export const useProduct = (slug: string) => {
          덜 참 → undefined (끝, hasNextPage=false)
       ※ 12개 달랬는데 적게 옴 = 남은 게 그뿐 = 마지막
 
-   ⑩ staleTime
-      그 기간 동안 데이터를 "신선"하다고 믿고 재요청 X (캐시 바로 씀).
-      지나도 즉시 삭제·재요청 X → "낡음" 표시만 → 트리거 시 백그라운드 갱신.
+   ⑩ staleTime + 캐시
+      RQ 실행 순서 = queryKey → staleTime → queryFn
+      fresh면 queryFn 아예 실행 X (캐시 그대로)
+      stale이어도 즉시 삭제·재요청 X → "낡음" 표시 → 트리거 시 백그라운드 갱신
+      캐시는 queryKey마다 칸이 쌓이는 보관함 (QueryClient = RQ 내부 메모리)
 
    ⑪ useProduct (단수)
       .single() → 딱 1개를 객체로 반환 (0개·2개+면 throw)
@@ -195,9 +271,10 @@ export const useProduct = (slug: string) => {
       DB 모양이 달라도 컴파일러는 못 잡음. (안전하게 하려면 Zod 등으로 검증)
 
    ── 전체 흐름 한 줄 ──────────────────────────────────────────────
-   주문서 작성 → await로 Supabase 발사 → { data, error } 받음
+   queryKey 확인 → (stale이면) queryFn 실행 → 주문서 작성 → await 발사(anon_key)
+   → 서버가 SQL 변환·실행 → RLS가 조건 AND로 붙여 통과한 행만 → { data, error }
    → if(error) throw / return data → React Query가 받아서
-   (성공: data칸+캐시 / 실패: catch→isError) → 컴포넌트가 꺼내 씀
+   (성공: data칸+캐시 저장 / 실패: catch→isError) → 컴포넌트가 꺼내 씀
 
    ⭐️ 객체의 { }
    - 옵션(속성), 키: 값, 콤마로 나열, 순서 상관없음

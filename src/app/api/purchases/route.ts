@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     // 전송은 이미 request.json() 에서 성공함
 
     // 검사 대상이 body안의 값들이지 전송됐는지가 아님 (필수 4개가 다 있나는 보는 것)
+    // body에 필수 값 있나 없나만 검사 (body에 값이 있나 없나)
     if (
       !body.product_id ||
       !body.product_name ||

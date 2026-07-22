@@ -19,6 +19,8 @@ export default function ProductDetailPage() {
   const router = useRouter()
   const { locale } = useT()
   const { data: product, isLoading, error } = useProduct(slug)
+  // 성공이든 실패든 → RQ 내부(try/catch) → 꾸러미 갱신 → 리렌더 → page가 새 값 받음. 같은 파이프.
+  // RQ가 컴포넌트 리랜더 트리거
   // React Query  throw를 "잡아서" → isError=true, error=Error 로 번역 -> 리랜더링 -> page.tsx (UI)
   // postPurchase가 throw -> reactQuery가 catch -> 상태로 번역
 
@@ -30,6 +32,11 @@ export default function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [activeTab, setActiveTab] = useState<Tab>('detail')
 
+  // 분석로그 콜백함수: 랜더 끝난 뒤 특정 값 바뀌면 실행할 부수효과
+  // 분석로그, api호출, 타이머, 구독 -> PostHog : 이 상품 봤다 기록
+  // product 바뀔 때만 실행 -> 본문에 직접 안쓰고 useEffect를 사용하는 이유
+
+  // 콜백: 등록만 해두면 프레임워크가 부름 (RQ/React) -> 부르는 주체가 자동으로 부르는 것 (함수 수동)
   useEffect(() => {
     if (!product) return
     trackEvent('product_view', {
@@ -102,8 +109,13 @@ export default function ProductDetailPage() {
     router.push('/')
   }
 
+  // 이미지 가공 준비 단계 (product 값을 꺼내 새 변수에 담아두는 줄 -> 이따 JSX에서 쓸 재료를 미리 다듬어 둔 것)
+  // 요리 전 도마 위에서 재료 손질 단계
+  // A.B -> A가 확실히 있을 때만 안전
+  // A?.B -> A가 없어도 안전. 없으면 undefined (조건판단 중간값 -> 나왔다 사라짐 -> [] 바뀜)
   const images = product.images?.length ? product.images : []
   const isSoldOut = product.status === 'sold_out' || product.stock <= 0
+  //                      ㄴ 관리자가 수동으로                    ㄴ 재고가 자동으로 바닥남
 
   return (
     <div>
