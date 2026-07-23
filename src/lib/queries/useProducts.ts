@@ -50,7 +50,7 @@ export const useProduct = (slug: string) => {
       return data as Product
     },
     staleTime: 1000 * 60 * 10,
-    // 데이터 있으면 (재방문) staleTime 판단 |
+    // 데이터 있으면 (재방문) staleTime 판단 | 캐시 없으면 staleTime 무시 -> queryFn 바로 실행
   })
 }
 
