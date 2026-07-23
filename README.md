@@ -75,6 +75,30 @@ src/
 
 ---
 
+## 📚 학습 기록 (docs/)
+
+> "바이브코딩으로 빠르게"가 목표지만, **데이터 흐름만큼은 직접 손으로 따라가며** 이해한 기록.
+> 새 코드를 볼 때 **"읽기냐 쓰기냐 / 통로 ①이냐 ②냐"** 두 질문으로 위치를 잡는다.
+
+### 데이터 흐름 스터디 노트 — [`docs/study/`](docs/study/)
+
+| #   | 노트                                             | 한 줄                                                   |
+| --- | ------------------------------------------------ | ------------------------------------------------------ |
+| 00  | [마스터 흐름 지도](docs/study/00-flow-map.md)    | 백 ↔ 프론트 한 장 요약 — 읽기/쓰기 · 통로 ①② 로 위치 잡기 |
+| 01  | [DB 스키마 & 제약](docs/study/01-db-schema.md)   | products · orders · order_items 테이블과 constraint 읽기 |
+| 02  | [INSERT](docs/study/02-insert.md)                | 테이블에 새 행(row) 넣기                                |
+| 03  | [RLS](docs/study/03-rls.md)                      | 행 단위 문지기 — `using`(기존 행) / `with check`(새 값) |
+| 04  | [JOIN + 전체 흐름](docs/study/04-join.md)        | fk 따라 붙여오기 · 컴포넌트 ↔ DB 한 바퀴                |
+| 05  | [useMutation](docs/study/05-mutation.md)         | 쓰기 훅 — `mutate()`가 방아쇠                           |
+| 06  | [Route Handler](docs/study/06-route-handler.md)  | `fetch` ↔ `route.ts` 왕복 · 포장/풀기 · createPurchase · RLS |
+
+### 설계 문서
+
+- [**빌드 로드맵**](docs/roadmap.md) — 목표 시나리오 × 현재 코드 실측 대조, "뭘 만들지" 정리
+- [**주문서(체크아웃) 데이터 모델**](docs/design/checkout-data-model.md) — `purchases`(단일) → `orders` + `order_items`(합구매) 전환 설계
+
+---
+
 ## 디자인 시스템
 
 ### 컬러
@@ -139,14 +163,15 @@ npm run dev
 - [x] nutats 레이아웃 — 좌측 사이드바 · 모바일 반응형
 - [x] 다국어 KR / EN 토글
 - [x] PostHog 분석 연동 (페이지뷰 · product_view · purchase)
-- [x] PortOne 결제 모듈 (결제창 · 서버 검증 · 취소 API) — ⚠️ 코드는 완성, 주문 버튼 연결만 남음
+- [x] **PortOne 결제 — 단일 상품 즉시구매**: 주문 생성(`purchases`) → 결제창 → 서버 검증 → 취소 API 연결
+- [x] **합구매 데이터 모델 설계** — `orders` + `order_items` 그릇 확정 (설계 · SQL 완료)
 
-### 다음 (우선순위 순)
+### 진행 중 / 다음
 
-- [ ] 🐛 결제 배선 — 주문 버튼에 PortOne 결제창 연결 (현재 주문 레코드만 만들고 미결제 상태로 성공 팝업)
-- [ ] 회원가입 / 로그인 — Google OAuth (Supabase Auth)
-- [ ] 마이페이지 — 주문 · 결제 내역 + 결제 취소(환불) (회원가입 선행 필요: 주문을 사용자에 연결)
-- [ ] 장바구니 → 체크아웃 정식 흐름
+- [ ] 장바구니 → **주문서(체크아웃) → 합구매 결제** 흐름 (데이터 모델 확정, UI 구현 단계)
+- [ ] 회원가입 / 로그인 — Google · Kakao OAuth (Supabase Auth)
+- [ ] 마이페이지 — 주문 · 결제 · 배송 조회 + 결제 취소(환불)
+- [ ] 어드민 — 배송 · 송장 입력 → 배송 추적
 - [ ] Vercel 배포
 
 ### 이후 (글로벌 확장)

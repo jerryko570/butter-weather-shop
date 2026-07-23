@@ -1,0 +1,230 @@
+# 08. 읽기 슬라이스 + 캐시 — useQuery / queryKey / staleTime / RQ 내부
+
+> 한 줄: **읽기(상품)는 통로① 직통(route·fetch 없음)·자동 실행·캐시가 특징. queryFn의 throw/return을 React Query가 내부 try/catch로 잡아 꾸러미(data/isError)로 만들고 → 리렌더 → page가 새 값을 받는다.**
+> 짝: [[00-flow-map]](읽기/쓰기 대칭) · [[06-route-handler]](쓰기 슬라이스, 같은 뼈대) · 색인 [[README]]
+
+---
+
+## 🍔 한 장 그림
+
+```
+[slug]/page.tsx:21  const { data:product, isLoading, error } = useProduct(slug)   ← 자동(진입)
+      ↓ (훅 호출)
+useProducts.ts  useQuery({ queryKey, queryFn, staleTime })   ← queryFn "등록"(배선)
+      ↓
+React Query (라이브러리 내부, 안 보임)
+   ① queryKey로 캐시 확인 → ② staleTime으로 fresh?stale? → ③ fresh면 캐시 / stale면 queryFn
+   try { await queryFn() } catch(err) { ... }   ← throw/return을 여기서 잡음
+      ↓ 꾸러미 갱신(data or error) + 리렌더
+page.tsx:21  새 꾸러미 받음 → 화면
+```
+
+---
+
+## 1. ⭐ 읽기(통로①) vs 쓰기(통로②) — 정거장부터 다름
+
+```
+✍️ 쓰기(주문):  page → hook → fetch → route.ts → service → supabase   (통로②, 6정거장)
+📖 읽기(상품):  page → hook ─────────────────────────→ supabase   (통로①, 3정거장, 직통!)
+```
+- 증거 = `import` 한 줄:
+  - 읽기 `import { createClient } from '@/lib/supabase/client'` 🌐 브라우저용(직통)
+  - 쓰기 `... '@/lib/supabase/server'` 🖥️ 서버용(route.ts 안)
+- 왜 직통 안전? 공개 상품 읽기는 데이터 안 변하고 RLS가 `is_active=true`만 내줌 → 위험 없음.
+
+## 2. `createClient()` = 열쇠 ❌ → "도구(리모컨) 조립" ⭕
+- `const supabase = createClient()` = supabase에 말 걸 **도구**. anon key는 그 도구 **안의 부품**.
+- 아직 DB 안 감 — 실제 왕복은 `.select()`에 `await` 붙을 때. (리모컨 만들기 vs 작동)
+- ⚠️ **읽기엔 `await` 없음** (anon key만 조립, 즉시) / 쓰기는 `await createClient()` (안에서 `await cookies()`로 신분 읽음).
+
+## 3. `useQuery({ ... })`는 "실행"이 아니라 "설정표 건네기"
+- `{ queryKey, queryFn, staleTime }` = **객체(옵션)** → **순서 없음.** 위→아래 실행 아님.
+- 셋 다 RQ에게 넘기는 **재료(설정)**. `queryFn`도 여기선 실행 X → RQ가 필요할 때 부름(등록=배선).
+- "순서"는 옵션이 아니라 **React Query 내부 코드**에 있음 (레시피 카드 재료 나열 ≠ 요리사가 쓰는 순서).
+
+## 4. ⭐ `queryKey` = 캐시 라벨 + 캐시는 "칸이 쌓이는 보관함"
+
+```ts
+queryKey: ['product', slug]   // 'product'=종류(고정) / slug=어느 것
+```
+- **slug를 넣는 이유** = 라벨이 데이터를 특정. 안 넣으면 모든 상품이 한 칸 → A 봤다가 B 들어가도 A가 뜸(버그).
+- ★ **다른 slug = 바꿔치기 ❌ = 별개의 새 칸(공존)**:
+  ```
+  ['product','keyring']     → {…}   ← 이 칸
+  ['product','butter-drop'] → {…}   ← 새 칸 (keyring 칸 안 지움, 옆에 남음)
+  ```
+- 그래서 **재방문이 즉시** — 칸이 안 지워지고 남아있어서. (바꿔치기면 다시 DB 가야 함)
+- "바꿔치기(내용 갱신)"는 **같은 slug** 재요청일 때만.
+
+## 5. ⭐ `staleTime` = "queryFn 돌릴지" 정하는 문지기 (확인이 먼저)
+
+```
+재방문 → RQ가 먼저 그 칸 나이 확인 (staleTime = 1000*60*10 = 10분)
+   fresh (10분 안)  → 캐시 그대로 즉시 ⚡ (queryFn 실행 X, DB 안 감)   ← 대부분 이 경우
+   stale (10분 지남) → 캐시 먼저 보여주고 + 백그라운드 갱신
+```
+- ★ **순서: staleTime 확인 → (fresh면 queryFn 스킵 / stale이면 queryFn).** "가고 나서 확인"이 아니라 "확인하고 갈지 정함".
+- 재방문 = 무조건 갱신 ❌ → fresh면 "그대로 재사용". 그래서 빠름.
+
+## 6. queryFn의 두 출구 — 쓰기 `createPurchase`와 글자까지 동일
+
+```ts
+const { data, error } = await supabase...   // supabase가 한 덩어리로 포장 → queryFn이 구조분해(개봉)
+if (error) throw error                       // 🚨 비상구: 실패면 던짐 (여기서 끝, 아래 못 감)
+return data as Product                       // 🚪 정문: 성공이면 반환
+```
+- `error` 있냐 없냐가 **갈림길** — 하나만 나감(뿌리는 게 아님).
+- supabase는 성공이면 `{data, error:null}` / 실패면 `{data:null, error}` — 한쪽만 채움.
+- 두 구간 구분: **① supabase→queryFn = 네트워크 O(통로①) / ② queryFn→RQ = 네트워크 X(부른 쪽으로 return/throw).**
+
+## 7. ⭐⭐ throw/return은 어디로? → React Query (부른 쪽), 그 안에 try/catch가 있다
+
+- `queryFn`을 실행한 건 **React Query**(라이브러리 내부, 안 보임). → return/throw는 **RQ로** 감.
+- **try/catch가 RQ 내부에 있음** (그래서 내 코드엔 안 보임 = RQ 쓰는 이유):
+  ```ts
+  // [React Query 내부 — node_modules, 안 보임]
+  try {
+    const result = await queryFn()   // 성공: return data → result
+    // → data칸 + 캐시 갱신, isLoading=false
+  } catch (err) {                     // 실패: throw error → err
+    // → error칸, isError=true
+  }
+  ```
+- ✅ 너 이미 [[06-route-handler]] 섹션20에서 useMutation에 대해 이걸 적었음 — useQuery도 동일.
+
+## 8. ⭐ 갱신 방식 = 변수 직접 수정 ❌ → 리렌더 ⭕
+
+```
+throw/return → RQ가 꾸러미 상태 갱신(data or error) → ★ 컴포넌트 리렌더 트리거
+   → page.tsx:21 그 줄이 "다시 실행" → 새 꾸러미 받음 → 화면 바뀜
+```
+- RQ가 page:21 변수에 손 뻗어 바꾸는 게 아님. **상태 갱신 → 리렌더 → 그 줄 재실행 → 새 값.** (useState와 동일 원리)
+- 꾸러미는 시간에 따라 3모습: `{isLoading:true}` → 성공 `{data:product}` / 실패 `{error}`. 각 변화마다 리렌더.
+
+## 9. "data칸/캐시가 어디야?" — 안 보이는 것 vs 보이는 것
+
+| | 어디 | 코드에 보임? |
+| --- | --- | --- |
+| React Query (부른 쪽·try/catch) | 라이브러리 내부 | ❌ |
+| 캐시 | RQ 내부 메모리 (queryKey 라벨) | ❌ (라벨만 보임) |
+| `data` 칸 | 꾸러미 → **page.tsx:21 `const {data:product}`** | ✅ (받는 쪽) |
+
+- **React Query ≠ page.tsx:21.** RQ는 안 보이는 요리사, page:21은 접시 받는 손님.
+- `return data`의 여정: queryFn → **RQ(캐시+data칸에 담음)** → useProduct가 꾸러미 반환 → page:21에서 꺼내 화면.
+
+## 10. 성공 ↔ 실패 완전 대칭
+
+| | queryFn | RQ 내부 | 꾸러미 | page:21 |
+| --- | --- | --- | --- | --- |
+| 성공 | `return data` | try 완료 | data + **캐시** + isLoading=false | `data`(=product) |
+| 실패 | `throw error` | catch | error + isError | `error` → 빨간 글씨 |
+- 둘 다 RQ 내부 거쳐 꾸러미 갱신 + 리렌더. 차이는 성공만 **캐시 저장**.
+
+## 11. ⭐ 곁가지 — `useEffect` + 콜백 패턴 (같은 page.tsx)
+
+상세 페이지에 이 코드가 있음:
+```ts
+useEffect(() => {
+  if (!product) return
+  trackEvent('product_view', { product_id: product.id, ... })
+}, [product])
+```
+
+### useEffect = "렌더 끝난 뒤, 특정 값 바뀌면 실행할 부수효과"
+- **부수효과(side effect)** = 화면 그리기 외의 일 (분석 로그·API·타이머·구독). `trackEvent`(PostHog 조회 기록)가 이거.
+- **의존성 배열 `[product]`** = "product 바뀔 때만 콜백 실행".
+- 왜 렌더 본문에 직접 안 쓰나 = 본문은 렌더마다 여러 번 실행(수량·탭 바뀌면 리렌더) → 이벤트 뻥튀기. useEffect는 **product 바뀔 때만**.
+
+### `if (!product) return` = 읽기 캐시 흐름과 연결 🔗
+```
+첫 렌더:   product=undefined(로딩 중) → useEffect 실행되지만 return으로 스킵
+product 도착(리렌더): product=상품 → useEffect 재실행 → trackEvent 발사 ✅
+```
+- 08의 "undefined → 도착 → 리렌더"를 `useEffect[product]`가 낚아채 **로딩 완료 순간 딱 한 번** 기록.
+
+### ⭐ "콜백"의 정체 — 자동인 건 콜백이 아니라 프레임워크
+- **콜백 = "나중에 불러줘"라고 넘겨두는 함수** (수동, 스스로 안 돎).
+- **자동 트리거는 React가 함** — `[product]` 감시하다 바뀌면 콜백을 대신 부름.
+- 역할 분담: **나 = 할 일(콜백)+언제([deps]) 등록 / 프레임워크 = 때 되면 자동 호출.**
+- 계속 나온 패턴: `queryFn`(RQ가 부름)·`postPurchase`(mutate가 부름)·`onSuccess`(성공 시)·`useEffect 콜백`(deps 바뀔 때). **전부 "등록해두면 프레임워크가 부르는" 콜백.**
+
+## 12. ⭐ `queryFn: async () => {}` 해부 — 정의 vs 실행, async 모자, `()` 입구
+
+헷갈리는 한 줄을 글자 단위로:
+```ts
+queryFn: async () => { const {data,error} = await supabase... }
+   ▲       ▲    ▲  ▲                        ▲
+ 이름표   모자  입구 화살표                  몸통(레시피)
+```
+- **`queryFn`** = 키(이름표). key엔 실행 괄호 못 붙임 → `queryFn(): value` ❌. (함수를 값으로 넣는 법: `queryFn: ()=>{}` 콜론 / `queryFn(){}` 메서드축약, 둘 다 **정의**)
+- **`async`** = 함수에 씌우는 "비동기 모자"(라벨). 함수 자체가 아님. 가리면 `()=>{}` 순수 화살표. "안에서 `await` 써도 돼" 능력만 추가.
+- **`()`** = 화살표 `=>` **왼쪽 괄호 = 매개변수 입구**(받을 재료 자리, 지금은 빔). 증거: 목록 훅은 `async ({pageParam=0})=>` 처럼 입구가 차 있음.
+- **`{ ... }` 몸통** = "실행 내용"❌ → **"실행될 때 이렇게 하라고 적어둔 레시피"**(정의). 이 줄 지난다고 `await` 발사 안 됨.
+
+### ★ 정의(레시피) vs 실행(방아쇠) — `()` 위치로 구분
+```
+async () => {}      ← 정의만 (=> 왼쪽 () = 매개변수 입구)
+foo()               ← 실행 (완성된 함수 "뒤에" 딱 붙는 () = 방아쇠)
+```
+- 그래서 `queryFn: async ()=>{}`는 **레시피를 RQ에 건넨 것.** 실제 요리(await 발사)는 **RQ가 나중에 `queryFn()`처럼 뒤에 실행 괄호를 붙일 때.** (섹션3·5의 "등록=배선"과 같은 말)
+- 계속 나온 콜백 전부 동일: `onSuccess: ()=>{}`·`useEffect(()=>{})`도 "정의만 넘김 → 프레임워크가 나중에 실행".
+
+## 13. ⭐⭐ 손질한 재료 → JSX 레이아웃에 꽂기 (3패턴)
+
+`const images=…` / `const isSoldOut=…`은 **재료 손질**(변수에 담기, 화면 X). 화면은 `return()` JSX의 **`{}` 구멍**에 재료를 꽂을 때 나옴.
+> 🎨 비유: `<h1>`=텍스트 레이어(틀), `{product.name}`=거기 연결된 동적 텍스트(스마트 오브젝트). 데이터 바뀌면 자동 갱신.
+
+**page 전체 = 이 3패턴의 반복:**
+
+### 패턴 ① 값 꽂기 — `{재료}`
+```jsx
+<Text as="h1">{localizedName(product, locale)}</Text>   // 이름
+{formatKRW(product.price_krw)}                           // 가격
+재고 {product.stock}개                                    // 숫자
+```
+→ "이 자리에 이 값을 찍어라." 기본.
+
+### 패턴 ② 조건부 — `조건 && <JSX>` / `조건 ? A : B`
+```jsx
+{images.length > 1 && ( <div>썸네일…</div> )}     // 참일 때만 그림
+{isSoldOut ? 'Sold Out' : 'Buy It Now'}          // 상황따라 A/B
+```
+→ `&&` = "왼쪽 참이면 오른쪽 JSX 그려라"(조건부 표시 레이어). 손질한 `isSoldOut`·`images`가 여기 쓰임.
+
+### 패턴 ③ 반복 — `배열.map(...)`
+```jsx
+{images.map((src, i) => ( <button key={src}><Image src={src}/></button> ))}
+```
+→ "배열 개수만큼 같은 컴포넌트 도장 찍기"(디자인 컴포넌트 인스턴스 여러 개). **빈 배열 `[]`로 손질해둔 덕에 이미지 0개여도 안전**(undefined.map 💥 방지).
+
+### 레이아웃(배치)은 태그 중첩 + Tailwind가 잡음 (재료와 별개)
+```jsx
+<div className="grid lg:grid-cols-2">   // 좌우 2단 = 레이아웃(네 강점)
+  <div>{/* 좌: 갤러리 */}</div>
+  <div>{/* 우: 정보블록 */}</div>
+</div>
+```
+→ **뼈대(레이아웃)는 손으로 짜고, 그 `{}` 구멍에 손질한 재료를 3패턴으로 꽂기.** 이게 데이터↔화면이 만나는 지점.
+
+## 14. 자주 나오는 JS 문법 3종 (page 읽다 계속 만남)
+
+```ts
+const images = product.images?.length ? product.images : []
+const isSoldOut = product.status === 'sold_out' || product.stock <= 0
+```
+- **`?.` (옵셔널 체이닝)** = "앞엣게 없으면 에러 말고 조용히 undefined"(노크하고 들어가기). `product.images.length`는 images 없으면 💥 / `product.images?.length`는 안전. → "없을지도 모르는 것" 파고들 때.
+- **`.length`** = 진짜 개수(숫자). 다만 `?` 앞 **조건 자리**에 놓이면 "0=거짓 / 1+=참"으로 한 번 더 읽힘. (개수 ≠ 참거짓, 두 단계 따로)
+- **`조건 ? A : B` (삼항)** = 한 줄 if-else. `images` 최종값은 `product.images` **또는** `[]` — **절대 undefined 아님**(중간 undefined는 판단용, 삼항이 `[]`로 걸러냄. 목적 = 아래 `.map` 안전).
+- **`||` (OR)** = "둘 중 하나만 참이어도 참". `isSoldOut` = 수동 품절(`status`) **또는** 자동 재고소진(`stock<=0`) 어느 쪽이든 걸리면 품절. `<= 0`은 0뿐 아니라 마이너스(데이터 꼬임)도 안전하게 품절.
+
+---
+
+## 🔑 오늘의 핵심 한 줄
+**읽기는 통로①(직통)·자동·캐시. `useQuery({queryKey,queryFn,staleTime})`는 설정표를 RQ에 건네는 것(순서는 RQ 내부에 있음). RQ가 queryKey로 캐시 확인 → staleTime으로 fresh면 queryFn 스킵. queryFn의 throw/return은 RQ 내부 try/catch가 잡아 꾸러미(isError/data+캐시)로 만들고 → 리렌더 → page가 새 값을 받는다. 쓰기와 같은 뼈대, 통로만 짧다.**
+
+---
+
+## ▶ 다음에 여기서 시작
+- ✅ 읽기 슬라이스 + 캐시 완주. 낙관적 업데이트의 전제(캐시) 확보.
+- ▶ **다음 = Zustand** (`useCart`/`cartStore`) — 서버 안 가는 **순수 클라이언트 전역 상태**(통로 어느 쪽도 아님). React Query(서버 상태) / useState(컴포넌트 로컬)와 대비.
+- 그다음 후보: **낙관적 업데이트**(캐시 직접 조작, 어드민 수정에), **무한스크롤**(`useInfiniteQuery`·pageParam·getNextPageParam).

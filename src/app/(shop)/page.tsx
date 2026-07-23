@@ -1,6 +1,6 @@
 'use client'
 
-// 홈(메인) — nutats 레퍼런스 레이아웃.
+// 홈(메인) —  레퍼런스 레이아웃.
 // 티커 → 히어로 → 신상품(실제 DB) → 브랜드 스토리.
 // 가벼운 i18n 토글을 쓰므로 클라이언트 컴포넌트.
 
@@ -66,7 +66,7 @@ export default function HomePage() {
           <div>
             <Text
               as="p"
-              className="mb-5 text-[10px] tracking-[0.14em] text-[#aaa] uppercase"
+              className="mb-5 text-[12px] tracking-[0.14em] text-[#aaa] uppercase"
             >
               {t('hero.eyebrow')}
             </Text>
@@ -96,24 +96,6 @@ export default function HomePage() {
                 {t('hero.newArrivals')}
               </Link>
             </div>
-          </div>
-
-          {/* 하단 스탯 */}
-          <div className="mt-10 flex gap-8 border-t border-[#e5e5e5] pt-8">
-            {[
-              { val: '16', label: t('stat.products') },
-              { val: 'KR · EN', label: t('stat.language') },
-              { val: 'WW', label: t('stat.shipping') },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <Text as="p" className="font-serif text-[22px] text-[#111]">
-                  {stat.val}
-                </Text>
-                <Text as="p" className="mt-1 text-[11px] text-[#aaa]">
-                  {stat.label}
-                </Text>
-              </div>
-            ))}
           </div>
         </div>
       </section>
