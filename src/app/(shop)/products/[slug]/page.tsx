@@ -18,6 +18,7 @@ import Image from 'next/image'
 import { useProduct } from '@/lib/queries/useProducts' // 상품 조회 (읽기 전용)
 import { usePurchase } from '@/hooks/usePurchase' // 주문 전송 (쓰기 전용, 함수 자체를 import)
 import { usePayment } from '@/hooks/usePayment' // PortOne 결제창 + 서버 검증
+import { useCart } from '@/hooks/useCart' // 장바구니 (Zustand, 서버 안 감)
 import { formatKRW } from '@/lib/utils/formatPrice' // 가격 포맷팅
 import { useEffect, useState } from 'react'
 import Text from '@/components/ui/Text/Text' // 공통 타이포 컴포넌트 (as로 태그+스타일 결정)
@@ -36,6 +37,7 @@ export default function ProductDetailPage() {
 
   const purchase = usePurchase() // 주문 도구 꾸러미. ()로 "실행한 결과"를 담는다 (함수 자체 X)
   const payment = usePayment() // 결제 도구 꾸러미. 주문 생성 후 PortOne 결제창을 띄운다
+  const { addItem, openCart } = useCart() // 장바구니에 담기 + 패널 열기 (네트워크 X)
 
   const [quantity, setQuantity] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -114,6 +116,22 @@ export default function ProductDetailPage() {
   const handleCloseSuccess = () => {
     setShowSuccess(false)
     router.push('/')
+  }
+
+  // 장바구니 담기 — 서버 안 감(네트워크 X). Zustand 스토어에만 쌓고 persist가 localStorage 백업.
+  const handleAddToCart = () => {
+    // addItem은 한 번에 1개씩 담음(이미 있으면 +1) → 선택한 수량만큼 반복 호출
+    for (let i = 0; i < quantity; i++) {
+      addItem({
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        price_krw: product.price_krw, // ★ 단가(개당). 합계는 스토어가 quantity 곱해 계산
+        price_usd: product.price_usd,
+        image: product.images?.[0] ?? '', // 배열에서 대표 1장만 (CartItem.image는 단수)
+      })
+    }
+    openCart() // 담으면 장바구니 패널을 열어 바로 확인
   }
 
   const images = product.images?.length ? product.images : []
@@ -266,6 +284,16 @@ export default function ProductDetailPage() {
 
           {/* 주문 버튼 + 에러 메시지 */}
           <div className="mt-8 flex flex-col gap-3">
+            {/* 장바구니 담기 — 2차 버튼(아웃라인). Buy It Now보다 시각 위계 낮춤 */}
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isSoldOut}
+              className="w-full border border-[#111] py-3.5 text-[11px] tracking-widest text-[#111] uppercase transition-colors hover:bg-[#111] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isSoldOut ? 'Sold Out' : 'Add to Cart'}
+            </button>
+
             <button
               type="button"
               onClick={handlePurchase}

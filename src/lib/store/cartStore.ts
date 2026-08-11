@@ -26,7 +26,12 @@ interface CartStore {
 }
 
 export const useCartStore = create<CartStore>()(
+  // 빈 호출 값을 B에 전달 X ->첫 호출이 B를 리턴한다
+  // create = ① 타입 저장하고 끝! | ② 스토어 내용 = 실제 스토어 내용물 (persist)을 B가 받아 완성함
+  // B = 타입은 정해졌고, 이제 내용물만 주면 완성할게 하고 기다리는 함수 | B(persist(...) -> 기다리던 내용물을 넣어주고 완성)
+  // create는 타입(1번) 과 내용물(2번) 을 나눠 받는다. create<타입>() 가 1번(타입)을 처리하고 내용물 기다리는 B를 내놓으면, persist(내용물)를 그 B에 넣는다. → 그래서 B로 들어감.
   persist(
+    //create()(persist) -> 두 번 눌러야 스토어가 나옴
     (set, get) => ({
       items: [],
       isOpen: false,
