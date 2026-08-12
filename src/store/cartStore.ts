@@ -27,9 +27,14 @@ interface CartStore {
 
 export const useCartStore = create<CartStore>()(
   persist(
+    // persist(콜백, 옵션) — 콜백 (set,get)=>({...}) 은 스토어 내용물, 옵션은 저장 설정
+    // set = 상태 바꾸는 리모컨(쓰기) | get = 현재 상태 꺼내는 리모컨(읽기). 둘 다 zustand가 넣어줌
     (set, get) => ({
-      items: [],
-      isOpen: false,
+      // ── 상태 (초기값) ──
+      items: [], // 담긴 상품 목록 — 처음엔 빈 배열
+      isOpen: false, // 장바구니 서랍 열림 여부 — 처음엔 닫힘
+
+      // ── 🔴 바꾸기 (set 사용 = 쓰기) ──
       addItem: (item) =>
         set((state) => {
           const existing = state.items.find((i) => i.id === item.id)
@@ -56,6 +61,8 @@ export const useCartStore = create<CartStore>()(
       clearCart: () => set({ items: [] }),
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
+
+      // ── 🔵 계산 (get 사용 = 읽어서 합계 계산) ──
       totalKrw: () =>
         get().items.reduce((sum, i) => sum + i.price_krw * i.quantity, 0),
       totalUsd: () =>

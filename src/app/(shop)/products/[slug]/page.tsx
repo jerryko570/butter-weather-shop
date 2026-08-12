@@ -122,6 +122,12 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     // addItem은 한 번에 1개씩 담음(이미 있으면 +1) → 선택한 수량만큼 반복 호출
     for (let i = 0; i < quantity; i++) {
+      // add 버튼을 누르면 객체가 생성됨
+      // 1. onClick={handleAddToCart}
+      // 2. handleAddCart 실행
+      // 3. addItem({ id: product.id, name: ... }) 호출
+      // 4. cartStore.ts -> addItem: (item) => ({})
+      //                             ======= 매개변수에 handleAddToCart (객체의 인자{})
       addItem({
         id: product.id,
         slug: product.slug,
