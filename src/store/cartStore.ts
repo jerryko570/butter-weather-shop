@@ -30,7 +30,7 @@ interface CartStore {
  * 1. interface CartStore (모양 설계도)
  * 2. (set,get) => ({...}) -> 콜백이 그 모양대로 객체 생성
  * 3. ① 값은 코드 초기값 (item:[]) -> ② 사용자 행동 (set) ->  ③ 새로고침 시 localStorage 복원
- * 4. useCartStore에 저장 -> useCart로 꺼냄 -> CartDrawer가 화면에 그림
+ * 4. useCartStore에 저장 -> useCart로 꺼냄 -> CartDrawer가 화면에 그림 (꺼내씀)
  *
  */
 
@@ -43,8 +43,11 @@ export const useCartStore = create<CartStore>()(
       //🟡 태초 (코드 초기값) - 콜백에 직접 적은 값
       isOpen: false, // 🟢 데이터 원본 - boolean
       addItem: (item) =>
+        //     ======= 누가 이 함수를 부르는 것인가 ? addItem을 호출하는 컴포넌트가 넣는다
+        //     ㄴ addItem을 부를 때 넣은 {} 객체가 매개변수 (함수입구) 에 들어감
         //🟡 사용자 행동 - addItem 호출 - items에 상품 채워짐
         set((state) => {
+          // ===== 업데이트
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
             return {

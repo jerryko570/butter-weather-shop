@@ -23,6 +23,7 @@ export function useCart() {
  * useCart = store와 컴포넌트 사이의 창구(경계)
  * cartStore = 주방
  * useCart = 창구
+ *  재정의 X, 원본을 '가리키기만'
  * 🟢 컴포넌트가 주방 (store)에 직접 안 들어가고
  * 창구 (useCart) 한테만 주문함
  *
