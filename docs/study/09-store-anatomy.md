@@ -142,6 +142,61 @@ onClick={handleAddToCart()}   // ❌ 렌더 즉시 실행 (버그)
 
 ---
 
+## 🎬 addItem 3단 추적 (원본 → 통로 → 호출)
+
+한 함수가 3파일에 보여도 **원본은 하나**. 나머진 '가리키기(참조)'.
+
+```
+① 원본(정의)   cartStore.ts:45   addItem: (item) => set((state)=>{...})  ← 진짜 몸통
+② 통로(참조)   useCart.ts:10     addItem: store.addItem                  ← 재정의 X, 원본 가리킴
+③ 호출(실행)   [slug]/page.tsx   addItem({ id, name... })                ← item 넣고 부름
+```
+
+📞 전화번호 비유: ①=사는 집, ②=번호 건네줌, ③=그 번호로 전화. 번호를 나눠 가져도 **받는 사람은 한 명**.
+
+### 클릭하면 벌어지는 일 (handleAddToCart)
+
+```
+0. 렌더 때    const { addItem } = useCart()      addItem 참조 미리 쥠
+1. 클릭       onClick={handleAddToCart}          (괄호 X = 나중 실행)
+2. 호출       for(quantity) addItem({product...}) item 넣어 부름 (수량만큼 반복)
+              → openCart()                        (괄호 O = 지금 실행)
+3. 원본 실행  cartStore addItem: (item) => set(…)
+4. set이 추가 items: [...state.items, {...item, quantity:1}]   ← '추가'는 여기(set)!
+5. persist    바뀐 items를 localStorage 백업
+6. 리렌더     items 구독하던 CartDrawer 갱신
+```
+
+- `addItem`은 1개씩 담음(있으면 +1) → 수량 3이면 **3번 반복**.
+- 추가 주체 = **`set`** (persist 아님. persist는 그 뒤 백업).
+- useCart는 **렌더 때 참조만 건네고 빠짐** — 클릭 땐 item이 page→store **직행**(같은 함수라). useCart가 진짜 일하는 건 **값(items·total)** 읽어 재포장·구독 연결하는 쪽.
+
+---
+
+## 🧩 매개변수 3형제 — "누가 인자를 넣나" (오늘의 핵심)
+
+> **판단법: 그 함수를 '누가 부르냐' = 누가 인자를 채우냐.**
+
+| 매개변수 | 어디 | 누가 넣나 | 왜 |
+| --- | --- | --- | --- |
+| `(set, get)` | 스토어 콜백 | **zustand** | 콜백을 zustand가 실행 |
+| `state` | `set((state)=>…)` | **zustand** | set 콜백을 zustand가 실행 |
+| `item` | `addItem:(item)=>…` | **컴포넌트(page)** | addItem을 page가 호출 |
+
+- `item` = "담을 상품 `{}` 객체". page의 `addItem({...})` 그 객체가 원본 `item`으로 직행. (zustand 아님!)
+- `state` = "현재 스토어 상태 `{items, isOpen…}`". **함수 아님** — 콜백은 `(state)=>{}`, state는 그 매개변수.
+
+### set 두 형태
+
+```ts
+openCart: () => set({ isOpen: true })       // 직접 값 (현재 상태 안 봄)
+addItem: (item) => set((state) => {...})    // 콜백 (현재 items를 '읽어야' 하니까)
+```
+
+addItem이 콜백 형태인 이유 → 기존 items를 봐야 함: `state.items.find(existing?)` / `[...state.items, new]`. "이미 담긴 상품인가?" 판단하려면 현재 상태가 필요 → zustand한테 "지금 상태 줘" 하는 콜백.
+
+---
+
 ## ✅ 한 눈 요약
 
 ```
@@ -160,4 +215,9 @@ items:[] = 여러 개(배열) · 처음 0개(빈) · null 대신 [] 라야 안�
 흐름:  cartStore → useCartStore() → store → useCart(창구) → 컴포넌트
 괄호:  값=그냥 | 계산=실행(O) | 액션=그대로(X)   ← 07 실전
 useCart 이유:  실행대행 · 내부숨김 · 단일창구 · 갈아끼우기
+
+addItem 3단:  원본 cartStore:45 → 통로 useCart:10(참조) → 호출 page(item 넣음)
+추가 주체:    set (persist는 그 뒤 백업만)
+누가 인자 넣나:  item=컴포넌트 | state·set·get=zustand   (누가 부르냐 = 누가 넣나)
+set 형태:     직접값 set({}) | 콜백 set((state)=>…) ← 현재 상태 읽어야 할 때
 ```
