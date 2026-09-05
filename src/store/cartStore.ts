@@ -1,3 +1,13 @@
+/**
+ * ✅ page = 주입 주체 (인자 {}를 넣는 호출자)
+ * ✅ item = 받는 자리 (정의의 매개변수)
+ * ✅ 규칙 = 같은 함수를 부르는 거라, 어디서 부르든 인자는 그 함수 정의의 매개변수로 간다
+ * ✅ 인자로 넣으면 함수가 매개변수로 받아 처리 (재사용) - 받기 (매개변수)
+ * 👉🏻 인자가 있어야 같은 함수를 다른 입력으로 사용 가능
+ * 👉🏻 함수를 빈칸(매개변수) 있는 틀로 만들고 인자로 매번 다른 값을 채워 재사용
+ * ✅ persist는 콜백(기능)과 옵션(데이터)을 인자로 받아서 자징 기능을 씌운 스토어를 만든다.
+ */
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -11,7 +21,6 @@ interface CartItem {
   quantity: number
 }
 
-// 🚀 모양(구조) 파생 - 객체 모양 원천 -> 설계도
 interface CartStore {
   items: CartItem[]
   isOpen: boolean
@@ -26,28 +35,15 @@ interface CartStore {
   totalCount: () => number
 }
 
-/**
- * 1. interface CartStore (모양 설계도)
- * 2. (set,get) => ({...}) -> 콜백이 그 모양대로 객체 생성
- * 3. ① 값은 코드 초기값 (item:[]) -> ② 사용자 행동 (set) ->  ③ 새로고침 시 localStorage 복원
- * 4. useCartStore에 저장 -> useCart로 꺼냄 -> CartDrawer가 화면에 그림 (꺼내씀)
- *
- */
-
 export const useCartStore = create<CartStore>()(
   persist(
-    // 🚀 실제 객체
-    //🟡 새로고침 후 (복원) - persist가 localStorage에서 읽어와 다시 채움
     (set, get) => ({
-      items: [], // 🟢 데이터 원본 - 값 X, 자리 O (빈 배열도 localStorage에 저장됨)
-      //🟡 태초 (코드 초기값) - 콜백에 직접 적은 값
-      isOpen: false, // 🟢 데이터 원본 - boolean
+      items: [],
+      isOpen: false, // 값에 => 없음 -> 값(데이터)
       addItem: (item) =>
-        //     ======= 누가 이 함수를 부르는 것인가 ? addItem을 호출하는 컴포넌트가 넣는다
-        //     ㄴ addItem을 부를 때 넣은 {} 객체가 매개변수 (함수입구) 에 들어감
-        //🟡 사용자 행동 - addItem 호출 - items에 상품 채워짐
+        // set으로 state 매개변수에 zustand가 현재 스토어 전체 상태를 주입
+        // 🟢 addItem 이름표에 함수가 담겨 있음
         set((state) => {
-          // ===== 업데이트
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
             return {
@@ -96,11 +92,181 @@ export const useCartStore = create<CartStore>()(
 
 
    ═════════════════════════════════════════════
+   ★★★ 이 파일의 전체 여정 — 설계도에서 화면까지
+   ═════════════════════════════════════════════
+   1. interface CartStore          🚀 모양(설계도) — 객체 모양의 원천
+   2. (set, get) => ({ … })        🚀 실제 객체 — 콜백이 그 모양대로 만들어냄
+   3. 값이 채워짐                   🟡 세 시점 (아래 섹션)
+   4. useCartStore에 저장
+        → useCart로 꺼냄
+        → CartDrawer가 화면에 그림 (꺼내 씀)
+
+   ★ 설계도 🚀 vs 실제 객체 🚀 — 둘은 다른 것
+       interface CartStore   "이런 모양이어야 한다"만 적힘. 값 0개
+       (set,get)=>({…})      그 모양에 맞춰 진짜 값을 채운 객체를 만들어냄
+     → 설계도는 컴파일 끝나면 사라지고, 실행 중에 남는 건 실제 객체뿐
+
+
+   ═════════════════════════════════════════════
+   ★★★ 함수 하나로 상품 100개를 담는다 — 정의·호출·실행
+   ═════════════════════════════════════════════
+   ★ 핵심 한 줄
+     양식(함수)은 하나, 채우는 내용(item)은 매번 다르다
+     → 상품이 100개여도 addItem 함수 하나로 전부 담을 수 있음
+
+   ★ (item)은 "빈 상자"다 — 나중에 누가 채워줄 자리
+       addItem: (item) => …
+                  ─┬─
+            지금은 비어 있음. 부르는 쪽이 채워준다 (잠깐 들고 있는 것)
+
+   ★ 3단계로 보면
+     🟢 1. 정의   addItem: (item) => …          빈 상자를 만들고 몸통을 씀
+     🟢 2. 호출   addItem({ id, slug, … })      값을 넣어 부름
+     🟢 3. 실행   item = { id, slug, … }        상자가 채워지고, 그걸로 items를 바꿈
+
+   ★ 모든 함수에 통하는 규칙
+       "부를 때 괄호 안에 넣은 값" = "정의할 때 만든 매개변수 자리"로 들어간다
+     · item = { id: product.id, slug: product.slug, name: … }  ← 통째로!
+       (필드 하나씩 쪼개서 들어가는 게 아니라, 객체 덩어리 그대로)
+
+   ★★ 인자는 "괄호 ( ) 안의 값"이다 — 중괄호가 아니라
+       addItem({ id, slug, … })
+              └─────┬───────┘
+          이 괄호 안에 들어있는 것 전체가 인자 1개
+          (마침 그 인자의 모양이 객체 { } 일 뿐)
+
+   ★★ 정의하는 곳과 부르는 곳은 서로 다른 파일이어도 된다
+     · 함수 정의도, 호출도 어디서나 가능
+     · ★ page에는 매개변수가 없다 — page는 "인자를 넣는 쪽"
+       매개변수 (item)은 정의한 곳(cartStore)에만 있다
+         page       addItem({ … })        인자를 넣는 쪽
+         cartStore  addItem: (item) => …  매개변수를 가진 쪽
+
+   ★ 파일 3단계로도 같은 이야기
+     🟡 정의   cartStore   addItem: (item) => { … }   빈 상자 만들고 몸통 씀
+     🟡 전달   useCart     만든 걸 넘기기               (새로 안 만듦)
+     🟡 호출   page        불러서 실행                  addItem({ … })
+     → 정의는 한 곳뿐. 나머지는 그걸 넘기고 부르기만 한다
+
+
+   ═════════════════════════════════════════════
+   ★★★ 콜백 — 넣는 사람과 실행하는 사람이 다르다
+   ═════════════════════════════════════════════
+   set((state) => { … })
+       └──────┬───────┘
+          콜백 = 남에게 넘겨주는 함수 (내가 실행하지 않음)
+
+   ★★ 한 줄 규칙
+       콜백은 내가 넣고, 매개변수는 그 메서드가 채운다
+
+   ★ 역할을 쪼개 보면
+       콜백을 set에 넣는 것      → 개발자(나). set의 인자로 넣음
+       그 콜백을 실행하는 것      → zustand (set이)
+       실행하면서 state를 채우는 것 → zustand
+     · 나는 "이렇게 바꿔줘"라고 적은 함수를 건네줄 뿐
+     · 언제 실행할지, 무슨 값을 넣을지는 zustand가 정한다
+
+   ★★ 함수도 "값"이다 → 그래서 인자로 넘길 수 있다
+       state.items.find( (i) => i.id === item.id )
+                        └────────┬──────────┘
+                    익명 화살표 콜백 = find의 인자
+     · find의 괄호 안에 있으니 이건 find의 인자다
+     · 숫자·문자열처럼 함수도 값이라서 그냥 넘길 수 있음
+
+   ★ find의 매개변수 (i)는 누가 채우나?
+       (i)의 출처 = state.items 의 각 항목
+       (i)를 주입하는 것 = find
+     · find가 배열을 한 칸씩 돌면서 i에 하나씩 넣어 콜백을 실행
+     · 나는 "무엇을 찾을지 판단하는 식"만 적어둔 것
+
+   ★ 이 구조는 이 파일 곳곳에 반복된다
+       persist( (set,get) => …, 옵션 )   콜백을 persist에 넘김 → zustand가 실행
+       set( (state) => … )               콜백을 set에 넘김     → zustand가 실행
+       items.find( (i) => … )            콜백을 find에 넘김    → find가 실행
+       items.map / filter / reduce       전부 같은 구조
+
+   · { } 는 그 콜백의 코드블록 (실행될 문장들)
+   · 한 문장 해설: 내가 set에 익명 콜백함수를 넣으면 → zustand가 그 콜백을
+     실행하면서 state 자리에 현재 상태를 주입한다 → 콜백은 새 상태를 리턴한다
+
+
+   ═════════════════════════════════════════════
+   ★★★ state는 "전체"가 들어온다 — 점 표기법으로 꺼낸다
+   ═════════════════════════════════════════════
+   set((state) => { … state.items … })
+        ─┬───          ──┬──
+      스토어 전체        그중 items만 꺼냄
+
+   ★ zustand는 items만 주는 게 아니라 스토어 현재 상태 "전체"를 주입한다
+     · state 안에는 items, isOpen, addItem … 전부 들어있음
+     · 그래서 .items 를 붙여 그중 필요한 것만 꺼내 쓴다
+     · zustand가 보관하는 것도 이 "스토어 상태" 전체
+
+   ★ 역할 분담
+       set()   = 실행할 내용 (내가 적음)
+       state   = 스토어 전체 상태 (zustand가 주입)
+     · ★ zustand는 주입만 한다. "이미 담긴 상품인지" 확인은 내가 find로 함
+       const existing = state.items.find((i) => i.id === item.id)
+
+   ★★ 주체로 다시 정리
+       item   = 사용자가 고른 상품 데이터를 받는 자리   → 주체는 page
+       state  = zustand가 보관 중인 현재 전체 상태      → 주체는 zustand
+
+   ★★ 구독 ≠ state — 헷갈리기 쉬운 둘
+       state  = 콜백 안에서 "지금 값"을 받는 것 (스토어 내부 일)
+       구독   = 컴포넌트가 스토어를 계속 지켜보는 것 (바깥 일, useCart)
+     · 구독하면 값이 바뀔 때 그 컴포넌트가 다시 그려진다
+     · state는 리렌더와 무관하게, 바꾸는 그 순간 값을 읽는 용도
+
+   ★★ 점 표기법 — 객체면 무엇이든 점으로 꺼낸다
+     · 매개변수든 변수든, 그게 객체이기만 하면 `객체.key` 로 접근 가능
+         state.items        매개변수(객체) → 그 안의 items
+         item.id            매개변수(객체) → 그 안의 id
+         product.price_krw  변수(객체)     → 그 안의 price_krw
+     · ★ 객체 없이 그냥 키만 쓰면 없는 이름이라 에러이고,
+       객체에 없는 키를 꺼내면 undefined가 나온다
+
+   · 마지막에 return 하는 값으로 items가 통째로 교체된다
+       return { items: [ … ] }   ← 이게 새 상태가 됨
+
+
+   ═════════════════════════════════════════════
+   ★★★ 🟡 값은 어디서 오나 — 채워지는 3가지 시점
+   ═════════════════════════════════════════════
+   같은 items라도 "지금 그 값이 어디서 온 건지"가 매번 다르다
+
+   🟡 ① 태초 (코드 초기값)
+        items: [] / isOpen: false
+        → 콜백에 내가 직접 적어둔 값. 앱을 처음 켰을 때의 모습
+        → ★ items: [] 은 "값이 없다"가 아니라 "빈 자리를 만들어 둔 것"
+          값 X, 자리 O — 빈 배열도 엄연한 값이고 localStorage에도 저장된다
+        → items = 지금 담긴 상품들이 "사는 곳"
+
+   🟡 ② 사용자 행동 (set)
+        addItem 호출 → items에 상품이 채워짐
+        → 앱이 도는 동안 값이 바뀌는 유일한 경로
+
+   🟡 ③ 새로고침 후 (복원)
+        persist가 localStorage에서 읽어와 다시 채움
+        → 코드 초기값 []로 시작했다가, 곧바로 저장돼 있던 값으로 덮임
+
+   ★ 순서로 보면
+       ① 코드 초기값  →  ② 사용자가 바꿈  →  ③ 새로고침하면 ②의 결과가 복원됨
+       (③은 ①을 덮어쓰는 것 — 그래서 새로고침해도 장바구니가 남아 보인다)
+
+   ★★ [] 로 시작하는 게 왜 중요한가 — 빈 배열도 배열이다
+     · state.items 는 비어 있어도 [] 이지 0이나 undefined가 아니다
+     · 그래서 items가 텅 비어도 find·map·filter·reduce가 안전하게 돈다
+       (0바퀴 돌고 끝날 뿐, 에러 없음)
+     · 만약 초기값을 안 줬다면 undefined.find(…) 로 터졌을 것
+
+
+   ═════════════════════════════════════════════
    ★★★ 만드는 순서 — 왜 cartStore부터인가
    ═════════════════════════════════════════════
-   만드는 순서 :  cartStore(로직) → useCart(전달) → page(화면)
-   의존 방향   :  page ────────→ useCart ────────→ cartStore
-                 (page가 useCart를 필요로 하고, useCart가 cartStore를 필요로 함)
+   만드는 순서 :  cartStore(로직) → useCart(전달) → page·CartDrawer(화면)
+   의존 방향   :  화면 ────────→ useCart ────────→ cartStore
+                 (화면이 useCart를 필요로 하고, useCart가 cartStore를 필요로 함)
 
    ★ 판단 규칙 — 모든 기능에 그대로 적용
        "A가 B를 필요로 하나?"  →  B를 먼저 만든다
@@ -117,7 +283,7 @@ export const useCartStore = create<CartStore>()(
    ★ 한 층 쌓을 때마다 확인 (바닥부터 쌓으면 어디서 틀렸는지 바로 보임)
      1층 cartStore 만들고 → 콘솔에서 addItem 테스트
      2층 useCart 얹고    → 잘 전달되나 확인
-     3층 page 얹고       → 버튼 눌러 확인
+     3층 화면 얹고       → 버튼 눌러 확인
      → 담을 곳 → 로직 → 화면
 
 
@@ -194,8 +360,23 @@ export const useCartStore = create<CartStore>()(
                 item      set   state
              내가 넣음   zustand가 챙겨줌
 
-     item          ← 바깥. 호출한 쪽(handleAddToCart 같은 UI 핸들러)이 넣어줌
+     item          ← 바깥. 이 함수를 "호출하는 컴포넌트"가 넣어준다
+                     (예: page의 handleAddToCart)
      set, state    ← 안쪽. zustand 엔진이 주입 (state는 set 리모컨이 채워줌)
+
+   ★ 매개변수를 볼 때 던질 질문
+       "누가 이 함수를 부르는가?"  →  그 부르는 쪽이 이 자리를 채운다
+     · addItem을 부르는 건 컴포넌트 → 그래서 item은 컴포넌트가 넣음
+     · set을 부르는 건 zustand      → 그래서 state는 zustand가 넣음
+     · find를 부르는 건 나지만, i를 넣는 건 find → 그래서 i는 find가 채움
+
+   ★ 부를 때 넣은 { } 객체가 곧 매개변수 자리로 들어간다
+       컴포넌트    addItem({ id, slug, name, … })   ← 넣는 값 = 인자
+                            └────────┬────────┘
+       스토어      addItem: (item) => …             ← 받는 이름 = 매개변수
+                             └─┬─┘
+     · 즉 item = 호출할 때 적은 그 { } 객체 그 자체 (통째로)
+     · 이름만 item으로 바뀌었을 뿐, 같은 물건
 
    ★ item 데이터의 출생지 → 결국 DB
      DB(상품) → 화면에 뿌려진 product → 담기 버튼 클릭 → addItem(product)
@@ -356,11 +537,12 @@ export const useCartStore = create<CartStore>()(
        persist는       → 그 알맹이를 "바뀔 때마다 localStorage에 백업되게" 감쌈
 
    ★★ 새로고침하면 무슨 일이 벌어지나 — 살아남는 진짜 장소는 localStorage
-       메모리(스토어)  : 새로고침하면 싹 초기화됨 → items: [] 로 리셋
+       메모리(스토어)  : 새로고침하면 싹 초기화됨 → items: [] 로 리셋 (🟡①)
        localStorage   : 그대로 남아 있음          ← 진짜로 살아남는 곳
-       → 새로고침 직후 persist가 localStorage를 다시 읽어서 스토어를 복원한다
+       → 새로고침 직후 persist가 localStorage를 다시 읽어서 스토어를 복원 (🟡③)
        → 그래서 화면엔 장바구니가 그대로 있는 것처럼 보임
      · 즉 persist는 저장만 하는 게 아니라 "다시 읽어와 채우는" 일까지 함
+     · 빈 배열 []도 저장 대상이다 (비었다는 사실 자체가 저장됨)
 
    ★ create vs persist — 역할 분담
        create   : 스토어(창고)를 만드는 기본 도구
@@ -382,6 +564,17 @@ export const useCartStore = create<CartStore>()(
    ────┬────       ──────────┬──────────────
     입력(입구)              출력(출구)
     zustand가 주입          함수가 돌려주는 객체 = 스토어 내용물
+                            🚀 이게 설계도(interface)에 맞춘 "실제 객체"
+
+   ★★ 키:값 한 줄만 보고 데이터인지 함수인지 판별하는 법
+       value에 화살표가 없으면  →  그냥 데이터
+           items: []           값
+           isOpen: false       값
+       value에 화살표가 있으면  →  함수 (그 키가 함수가 사는 곳)
+           addItem: (item) => …
+           totalKrw: () => …
+     · 객체 하나 안에 "값"과 "함수"가 섞여 있는 구조
+     · 화살표가 보이면 "지금 실행되는 게 아니라, 나중에 부르면 실행될 것"
 
    ★ 리턴하는 객체의 구성 = 값 먼저, 그 다음 도구
        값(상태)      items, isOpen           🟢 기억할 원본
@@ -407,20 +600,49 @@ export const useCartStore = create<CartStore>()(
        더하기(3, 5) → 8   (입력이 있어야 출력이 나옴)
 
 
+   ═════════════════════════════════════════════
+   ★★★ set의 두 가지 형태 — 언제 (state)=>를 쓰나
+   ═════════════════════════════════════════════
+   · set = 액션 함수 (상태를 실제로 바꾸는 도구)
+
+   ▸ 형태 A : set({ … })              "그냥 이 값으로 바꿔"
+       clearCart: () => set({ items: [] })
+       openCart:  () => set({ isOpen: true })
+       closeCart: () => set({ isOpen: false })
+     · 기존 값을 볼 필요가 전혀 없을 때
+     · "무조건 비운다 / 무조건 연다" → 지금 뭐가 들었든 상관없음
+
+   ▸ 형태 B : set((state) => { … })   "지금 값을 보고 나서 정할게"
+       addItem, removeItem, updateQuantity
+     · ★ 기존 items를 읽어야만 다음 값을 정할 수 있어서 = 업데이트이기 때문
+         addItem        이미 담긴 상품인지 찾아봐야 함 (있으면 +1, 없으면 추가)
+         removeItem     기존 배열에서 그 id만 빼야 함
+         updateQuantity 기존 배열에서 그 항목만 갈아끼워야 함
+     · state = zustand가 넣어주는 "지금 상태" (전체가 들어옴 → .items로 꺼냄)
+
+   ★ 한 줄 판정
+       덮어쓰기(새 값만 있으면 됨)  → set({ … })
+       업데이트(옛 값이 있어야 함)  → set((state) => { … })
+
+   · 형태 B 안에서도 리턴은 결국 "새 상태 객체"다 (형태 A와 같은 모양)
+   · set은 어느 쪽이든 병합 — 넘긴 키만 바뀌고 나머지는 그대로
+     예) set({ isOpen: true }) 해도 items는 안 건드림
+
+
    ─────────────────────────────────────────────
    ★ set vs get — 리모컨 버튼 2개 (쓰기 / 읽기)
    ─────────────────────────────────────────────
    🔴 set : 스토어를 새 상태로 바꾸고 리렌더 시킴 (쓰기·바꾸기)
-            → set({...}) 또는 set((state) => ({...}))
    🔵 get : 현재 스토어 상태를 돌려줌 (읽기·계산)
             → get().items  (합계 계산처럼 지금 값이 필요할 때)
 
    · 창고가 다 지어진 뒤, 사용자가 담을 때 실제로 일하는 게 set
    · ★ addItem은 "이미 쥐여받은 set"을 가져다 쓸 뿐
      사용자가 넣는 건 set이 아니라 item (담기 버튼 → addItem의 매개변수로 들어감)
-   · set은 "덮어쓰기가 아니라 병합" — 넘긴 키만 바뀌고 나머지는 그대로
-     예) set({ isOpen: true }) 해도 items는 안 건드림
-   · 이전 값이 필요하면 set((state) => …) 형태로 (state = 지금 상태)
+   · set 안의 (state) vs get() — 둘 다 "지금 값 읽기"지만 쓰는 자리가 다름
+       바꾸는 중에 읽어야 하면 → set((state) => …) 의 state
+       그냥 읽기만 하면       → get()
+     · 둘 다 스토어 "전체"를 주고, .items로 꺼내 쓰는 것도 똑같음
 
 
    ─────────────────────────────────────────────
@@ -438,10 +660,11 @@ export const useCartStore = create<CartStore>()(
 
 
    ─────────────────────────────────────────────
-   1. 타입 정의 — 시그니처 읽는 법  (= 만들기 1️⃣ 단계)
+   1. 🚀 타입 정의(설계도) — 시그니처 읽는 법  (= 만들기 1️⃣ 단계)
    ─────────────────────────────────────────────
    ★ interface 블록은 전부 "양식(설계도)" — 값이 하나도 없다
      "이런 모양이어야 한다"만 적어둔 것. 실제 값은 아래 create 안에서 채움
+     → 객체 모양의 "원천". 아래 콜백이 이 모양대로 실제 객체를 만든다
 
    ▸ 함수 타입 한 줄 읽는 공식
        addItem      : (item: …)      => void
@@ -505,7 +728,7 @@ export const useCartStore = create<CartStore>()(
    ─────────────────────────────────────────────
    2. 🔴 동작들 — 한 줄씩
    ─────────────────────────────────────────────
-   addItem: (item) => set((state) => {
+   addItem: (item) => set((state) => {        ← 형태 B (기존 값을 읽어야 함)
      const existing = state.items.find((i) => i.id === item.id)
      if (existing) {
        // 이미 있으면 → 그 항목만 quantity + 1
@@ -531,9 +754,9 @@ export const useCartStore = create<CartStore>()(
    }))
    // · { ...i, quantity } = { ...i, quantity: quantity } 의 축약 (키·변수 이름 같을 때)
 
-   clearCart: () => set({ items: [] })       // 통째로 비우기 (주문 완료 후 등)
-   openCart:  () => set({ isOpen: true })    // 패널 열기
-   closeCart: () => set({ isOpen: false })   // 패널 닫기
+   clearCart: () => set({ items: [] })       // 형태 A — 통째로 비우기
+   openCart:  () => set({ isOpen: true })    // 형태 A — 패널 열기
+   closeCart: () => set({ isOpen: false })   // 형태 A — 패널 닫기
 
 
    ─────────────────────────────────────────────
@@ -551,7 +774,7 @@ export const useCartStore = create<CartStore>()(
 
 
    ─────────────────────────────────────────────
-   4. 쓰는 쪽에서는 (컴포넌트)
+   4. 쓰는 쪽에서는 (useCart → 컴포넌트)
    ─────────────────────────────────────────────
    const items    = useCartStore((s) => s.items)      // 필요한 것만 골라 구독
    const addItem  = useCartStore((s) => s.addItem)
@@ -562,6 +785,9 @@ export const useCartStore = create<CartStore>()(
 
    · ★ 통째로 쓰지 말고 (s) => s.items 처럼 "필요한 조각만" 고르는 게 좋음
      → 그 조각이 바뀔 때만 리렌더 (통째 구독은 아무거나 바뀌어도 리렌더)
+   · 여기 (s)도 스토어 전체 → .items로 꺼내는 것 (state·get()과 같은 패턴)
+   · ★ 이게 "구독" — 컴포넌트가 스토어를 지켜보는 것 (state와는 다른 개념)
+   · 최종 소비처: useCartStore → useCart → CartDrawer가 화면에 그림
 
 
    ─────────────────────────────────────────────
@@ -581,9 +807,50 @@ export const useCartStore = create<CartStore>()(
    ─────────────────────────────────────────────
    5. 헷갈릴 때 메모
    ─────────────────────────────────────────────
+   · 여정: 🚀설계도(interface) → 🚀실제객체(콜백) → 🟡값 채워짐
+           → useCartStore → useCart → CartDrawer(화면)
+
+   · 함수 하나로 상품 100개: 양식(함수)은 하나, 내용(item)은 매번 다름
+       1.정의 (item) 빈 상자 → 2.호출 addItem({…}) → 3.실행 item = {…}
+       파일로는 정의(cartStore) → 전달(useCart) → 호출(page)
+       규칙: 부를 때 괄호에 넣은 값 = 정의할 때 만든 매개변수 자리 (통째로)
+       인자 = 괄호 ( ) 안의 값 (중괄호가 아님)
+       page엔 매개변수가 없다 — page는 인자를 넣는 쪽
+
+   · ★ 콜백은 내가 넣고, 매개변수는 그 메서드가 채운다
+       함수도 값이라서 인자로 넘길 수 있음 (find의 괄호 안 = find의 인자)
+       find의 (i) 출처는 state.items, i를 주입하는 건 find
+       persist·set·find·map·filter·reduce 전부 같은 구조
+
+   · state는 스토어 "전체"가 들어옴 → .items로 꺼내 씀
+       zustand는 주입만, 확인(find)은 내가
+       주체: item = page / state = zustand
+       점 표기법: 객체이기만 하면 객체.key / 없는 키는 undefined
+
+   · 구독 ≠ state
+       state = 콜백 안에서 지금 값을 받는 것 (스토어 내부)
+       구독  = 컴포넌트가 스토어를 지켜보는 것 (useCart, 바뀌면 리렌더)
+
+   · 빈 배열도 배열 — items가 []여도 find·map·filter가 안전하게 돎
+       (0바퀴 돌고 끝. 초기값이 없었다면 undefined.find로 터짐)
+
+   · 키:값 판별 — value에 화살표 없으면 데이터 / 있으면 함수
+       items: [] · isOpen: false     = 값
+       addItem: (item) => …          = 함수가 사는 곳
+
+   · 🟡 값의 출처 3가지
+       ① 태초: 코드 초기값 (items: [] — 값 X, 자리 O)
+       ② 사용자 행동: set으로 채워짐
+       ③ 새로고침: persist가 localStorage에서 복원 (①을 덮어씀)
+
+   · set 두 형태: 덮어쓰기 → set({…}) / 업데이트(옛 값 필요) → set((state)=>{…})
+       addItem·removeItem·updateQuantity는 기존 items를 읽어야 해서 형태 B
+       clearCart·openCart·closeCart는 무조건 그 값이라 형태 A
+       리턴하는 객체로 items가 통째로 교체됨
+
    · 만드는 순서 = 의존성 반대 방향
        "A가 B를 필요로 하나?" → B 먼저
-       cartStore → useCart → page / 타입 → 상태 → 함수
+       cartStore → useCart → 화면 / 타입 → 상태 → 함수
        한 층씩 쌓고 매번 확인 (콘솔 → 전달 → 버튼)
 
    · 상태 판정: ① 사라지면 화면 못 그리나? → YES면 상태 후보
@@ -604,8 +871,10 @@ export const useCartStore = create<CartStore>()(
    · 새로고침: 메모리는 초기화 → persist가 localStorage를 다시 읽어 복원
      진짜 살아남는 장소 = localStorage (메모리 아님)
 
-   · 누가 넣나: item = 바깥(호출한 쪽·담기 핸들러) / set·state = 안쪽(zustand)
-     item의 출처는 DB → 화면 → 클릭 → addItem(item)
+   · 매개변수는 "누가 이 함수를 부르나?"로 판단
+       addItem을 부르는 건 컴포넌트 → item은 컴포넌트가 넣음
+       set을 부르는 건 zustand      → state는 zustand가 넣음
+       부를 때 적은 { } 객체가 그대로 item 자리에 들어감
 
    · => 는 "왼쪽을 받아서 오른쪽을 내놔라" (입구와 출구를 잇는 화살표)
      (매개변수) => (리턴할 몸통)  — 이 한 줄 전체가 이름 없는 함수 하나
@@ -648,10 +917,6 @@ export const useCartStore = create<CartStore>()(
    · 전역 상태 = 앱 어디서든 같은 창고를 열어 읽고/담음 (props로 안 넘겨도 됨)
 
    · 이름: 파일 = cartStore.ts(무엇을 담았나) / 훅 = useCartStore(use 붙임)
-
-   · set = 쓰기(새 상태로 바꾸고 리렌더) / get = 읽기(현재 상태 돌려줌)
-       set은 병합(넘긴 키만 변경) / 이전 값 필요하면 set((state) => …)
-       addItem은 이미 쥐여받은 set을 쓸 뿐, 사용자가 넣는 건 item
 
    · 불변성: push·직접수정 X → map·filter·스프레드로 "새 배열" 반환
 

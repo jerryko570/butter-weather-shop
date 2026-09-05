@@ -7,7 +7,7 @@ export function useCart() {
   return {
     items: store.items,
     isOpen: store.isOpen,
-    addItem: store.addItem,
+    addItem: store.addItem, // 🟢 같은 함수를 그대로 넘김
     totalKrw: store.totalKrw(),
     totalUsd: store.totalUsd(),
     totalCount: store.totalCount(),
