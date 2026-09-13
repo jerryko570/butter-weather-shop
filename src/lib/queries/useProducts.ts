@@ -1,3 +1,10 @@
+/**
+ * 🟢 읽기 (select)는 데이터를 전송하는 게 아닌, slug를 담은 요청을 보내고 데이터를 받는 것
+ * 🟢 page (UI접점)에서 파생된 사용자 데이터를 hook에 인자로 넣고,
+ *    hook은 그걸 매개변수로 받아 처리한다. 그리고,
+ *    hook은 결과를 다시 page로 return 꾸러미로 돌려준다
+ */
+
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { Product } from '@/types/product'
@@ -5,7 +12,7 @@ import type { Product } from '@/types/product'
 const PAGE_SIZE = 12
 
 export const useProducts = (category?: string) => {
-  const supabase = createClient()
+  const supabase = createClient() // supabse는 내부 도구라 안나감
 
   return useInfiniteQuery({
     queryKey: ['products', category],
@@ -31,17 +38,19 @@ export const useProducts = (category?: string) => {
 }
 
 export const useProduct = (slug: string) => {
+  //                      ============== 매개변수
   const supabase = createClient()
 
   return useQuery({
     queryKey: ['product', slug],
     queryFn: async () => {
       const { data, error } = await supabase
+        //                        ㄴ 데이터를 요청하고 받는다 (읽기 방향)
         .from('products')
-        .select('*') // 모든 컬럼이 들어옴
-        .eq('slug', slug)
+        .select('*') // 전체 열
+        .eq('slug', slug) // slug 조건으로 요청 보냄 → 데이터를 받아옴
         .eq('is_active', true)
-        .single() // 한 행(객체)을 통째로 가져와서 product에 담음
+        .single() // 한 행을 객체로
       if (error) throw error
       return data as Product
     },
@@ -63,10 +72,43 @@ export const useProduct = (slug: string) => {
 
 
    ═════════════════════════════════════════════
+   ★★★ 리턴 릴레이 — 누가 만들고, 누가 안고 있나
+   ═════════════════════════════════════════════
+   export const useProduct = (slug) => {
+     return useQuery({ … })
+     ──┬──  ────┬────
+   리턴 주체    리턴되는 값
+   = useProduct  = useQuery를 부른 "결과"
+
+   ★ 한 줄로
+     import한 useQuery를 useProduct 안에서 부르고,
+     그 결과를 useProduct가 받아서 return으로 밖에 내보낸다
+
+   ★★ 리턴은 밖으로 나간다 — 이 함수가 품고 있는 게 아니다
+     · useProduct는 결과를 자기 안에 저장하지 않는다
+     · 꾸러미를 실제로 안고 있는 건 "받는 쪽", 즉 부른 곳의 변수
+         page:  const { data: product, … } = useProduct(slug)
+                       └────────┬────────┘
+                        여기가 꾸러미를 안고 있는 자리
+     · cartStore 콜백의 "리턴은 안에 쌓이는 게 아니라 밖으로"와 같은 이야기
+
+   ★ 그래서 부를 때마다 새로 만들어 내보낸다
+     · useProduct는 "결과를 보관하는 상자"가 아니라
+       "부르면 그때 꾸러미를 만들어 넘겨주는 함수"
+     · 보관은 React Query 쪽(캐시)이 하고, 훅은 통로 역할
+
+   ★★ import vs 호출 — 가져오기와 부르기는 다르다
+       import { useQuery }   도구를 가져오기만 함 (아직 실행 전)
+       useQuery({ … })       그 도구를 부르기 (실행 → 결과값 O)
+     · const supabase = createClient()  ← 이것도 같은 형태 (실행 결과를 담음)
+     · cartStore·page의 "괄호 붙였으면 지금 실행" 규칙과 동일
+
+
+   ═════════════════════════════════════════════
    ★★★ 구조 — 훅 안에서 훅을 실행해 그대로 return
    ═════════════════════════════════════════════
    커스텀 훅 안에서 useInfiniteQuery / useQuery를 실행해 return 한다
-       넣는 것 = 설정 객체   { queryKey, queryFn, … }
+       넣는 것 = 설정 객체   { queryKey, queryFn, … }   ← 인자 1개
        나오는 것 = 결과 꾸러미 { data, error, isLoading, fetchNextPage, … }
    → 요청·캐시·로딩/에러는 전부 React Query가 관리
    → 나는 "무엇을 어떻게 가져올지"만 적어둔다
@@ -84,10 +126,13 @@ export const useProduct = (slug: string) => {
      .eq('is_active', true)               행 필터     (어떤 줄을 꺼낼지)
      .range(시작, 끝)                      페이지      (몇 번째부터 몇 개)
      .order('created_at', {…})            정렬
+     .single()                            한 행만 (단수 훅에서)
 
    ★ 칸(컬럼) vs 줄(행) — 이 구분이 핵심
        .select  = 세로로 자르기 → 이름·이미지·가격 같은 "칸"을 고름
+                  '*' 이면 모든 컬럼(전체 열)이 다 들어옴
        .eq      = 가로로 자르기 → 조건에 맞는 "행"만 고름
+       .single  = 그 한 행(객체)을 통째로 가져옴 → product에 담김
 
    ★ 여기까지는 DB에 안 간다
      · 체인은 "주문서를 적는 것"일 뿐
@@ -134,17 +179,26 @@ export const useProduct = (slug: string) => {
    queryFn: async ({ pageParam = 0 }) => { … }
      · 내가 부르는 게 아니라 React Query가 필요할 때 부른다
      · pageParam도 React Query가 넣어준다 (cartStore의 set·state와 같은 구조)
+     · 여기도 "콜백은 내가 넣고, 매개변수는 그 엔진이 채운다"
 
    ★ 출구는 딱 2개
        return data   → 성공
        throw error   → 실패
 
-   ★ Supabase 응답 { data, error }
+   ★ Supabase 응답 { data, error } — raw 응답
+     · await supabase…  가 돌려주는 날것 그대로의 응답
      · 한쪽이 값이면 다른 쪽은 null
          성공 → data 있음 / error = null
          실패 → data = null / error 있음
      · ★ Supabase는 자동으로 throw하지 않는다
        → 그래서 내가 직접 if (error) throw error 를 써줘야 함
+
+   ★★ return data 이후 — 보이지 않는 곳에서 벌어지는 일
+       내가 던진다        return data as Product
+       RQ가 받아 감싼다   (코드엔 안 보임)
+       RQ가 담는다        꾸러미의 data 칸 + 캐시
+       내가 꺼낸다        const { data: product } = useProduct(slug)
+     · 즉 여기서 리턴한 값이 page의 product가 되는 것
 
    ★ 던지는 건 나, 받는 건 React Query
        queryFn    → throw error
@@ -201,6 +255,7 @@ export const useProduct = (slug: string) => {
    ★ useProduct (단수) — 목록과 다른 점
    ═════════════════════════════════════════════
    · .single()  → 딱 1개를 "객체"로 반환 (0개거나 2개 이상이면 throw)
+       한 행을 통째로 가져와서 product에 담는 것
    · 그래서 리턴이 Product[] 가 아니라 Product (배열 아님)
    · .eq('slug', slug) + .eq('is_active', true)
      → 그 slug이면서 공개 상태인 상품 1개
@@ -221,12 +276,12 @@ export const useProduct = (slug: string) => {
    ═════════════════════════════════════════════
    ⭐️ 객체의 { }
        옵션(속성)을 "키: 값"으로 나열
-       콤마로 구분 / 순서 상관없음
+       콤마로 구분 / 순서 상관없음  → 데이터 = 명사
        예) useQuery({ queryKey, queryFn, staleTime })
 
    ⭐️ 함수의 { }
        실행되는 문장(코드 줄)들의 묶음
-       줄바꿈·세미콜론으로 구분 / 위→아래 순서대로 실행
+       줄바꿈·세미콜론으로 구분 / 위→아래 순서대로 실행  → 동작 = 동사
        예) queryFn: async () => { … }
 
    · 같은 기호지만 완전히 다른 것 — 위치로 구분한다
@@ -240,16 +295,25 @@ export const useProduct = (slug: string) => {
    주문서 작성(체인) → await로 Supabase 발사 → RLS 검사 통과
    → { data, error } 받음 → if(error) throw / return data
    → React Query가 받아서 (성공: data칸 + 캐시 / 실패: catch → isError)
-   → 컴포넌트가 꺼내 씀
+   → useProduct가 꾸러미를 return → 컴포넌트 변수가 그걸 안고 꺼내 씀
 
 
    ─────────────────────────────────────────────
    헷갈릴 때 메모
    ─────────────────────────────────────────────
+   · 리턴 릴레이: useQuery를 부른 결과를 useProduct가 return으로 내보냄
+       리턴 주체 = useProduct(바깥 함수) / 리턴되는 값 = useQuery의 결과
+       ★ 꾸러미를 안고 있는 건 받는 쪽 변수 (훅이 품는 게 아님)
+       훅은 부를 때마다 새로 만들어 내보내는 통로, 보관은 RQ 캐시가
+
+   · import = 도구 가져오기(실행 전) / useQuery() = 부르기(실행 → 결과)
+       괄호 붙였으면 지금 실행 (createClient()도 같음)
+
    · 넣는 것 = 설정 객체 / 나오는 것 = 결과 꾸러미 (RQ가 다 관리)
 
    · 체인은 주문서 작성일 뿐 — await 해야 DB로 발사
-     .select = 칸(컬럼) 고르기 / .eq = 줄(행) 고르기
+     .select = 칸(컬럼) 고르기 ('*'는 전체 열) / .eq = 줄(행) 고르기
+     .single = 그 한 행을 객체로 통째로
      let인 이유 = if에서 .eq를 덧붙여 덮어쓰려고
 
    · RLS는 행 단위 검문 — 읽기는 조용히 숨김 / 쓰기는 입구컷
@@ -259,6 +323,10 @@ export const useProduct = (slug: string) => {
    · queryFn은 RQ가 대신 실행 / pageParam도 RQ가 넣어줌
      출구 2개: return data(성공) / throw error(실패)
      Supabase는 자동 throw 안 함 → if(error) throw 직접
+     { data, error } = raw 응답 (날것 그대로)
+
+   · return data → RQ가 안 보이는 곳에서 감싸 data 칸에 담음
+     → 그게 page의 product가 됨
 
    · 던지는 건 나, 받는 건 RQ, 그리는 건 컴포넌트
 
@@ -273,5 +341,5 @@ export const useProduct = (slug: string) => {
 
    · as는 약속일 뿐 런타임 검사 X
 
-   · { } 는 위치로 구분: 옵션 나열이면 객체 / 문장 묶음이면 코드블록
+   · { } 는 위치로 구분: 옵션 나열이면 객체(명사) / 문장 묶음이면 코드블록(동사)
    ════════════════════════════════════════════════════════════════ */

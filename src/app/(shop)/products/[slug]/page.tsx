@@ -19,7 +19,11 @@ export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const router = useRouter()
   const { locale } = useT()
-  const { data: product, isLoading, error } = useProduct(slug)
+  const { data: product, isLoading, error } = useProduct(slug) // RQ가 data, error 담고 상태만 갱신
+  //                                                   ======= 인자 넣는 값 (부름 -> 결과 꾸머리 나옴)
+  // 🟢 함수마다 뭘 받을지 (인자모양)을 정해놨고, 부를 땐 그 규칙대로 넣는다. (인자는 넣는다!)
+  // 🟢 인자를 넣고 useProduct가 그걸 받아 조회함
+  // 🟢🟢 slug를 넣고 부름 -> useProduct 실행 -> 꾸러미 구조분해를 리턴 🟢🟢
 
   const purchase = usePurchase()
   const payment = usePayment()
@@ -102,8 +106,10 @@ export default function ProductDetailPage() {
         price_usd: product.price_usd,
         image: product.images?.[0] ?? '',
       })
+      // {data: product} 로 꺼내 필요한 칸만 골라 {} 새 객체 만들고
+      // addItem(item) 매개변수에 주입
     }
-    openCart()
+    openCart() // for문 밖에서는 1번만 실행됨
   }
 
   const images = product.images?.length ? product.images : []

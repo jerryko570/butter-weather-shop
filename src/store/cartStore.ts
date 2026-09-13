@@ -1,13 +1,3 @@
-/**
- * ✅ page = 주입 주체 (인자 {}를 넣는 호출자)
- * ✅ item = 받는 자리 (정의의 매개변수)
- * ✅ 규칙 = 같은 함수를 부르는 거라, 어디서 부르든 인자는 그 함수 정의의 매개변수로 간다
- * ✅ 인자로 넣으면 함수가 매개변수로 받아 처리 (재사용) - 받기 (매개변수)
- * 👉🏻 인자가 있어야 같은 함수를 다른 입력으로 사용 가능
- * 👉🏻 함수를 빈칸(매개변수) 있는 틀로 만들고 인자로 매번 다른 값을 채워 재사용
- * ✅ persist는 콜백(기능)과 옵션(데이터)을 인자로 받아서 자징 기능을 씌운 스토어를 만든다.
- */
-
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -39,10 +29,8 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
-      isOpen: false, // 값에 => 없음 -> 값(데이터)
+      isOpen: false,
       addItem: (item) =>
-        // set으로 state 매개변수에 zustand가 현재 스토어 전체 상태를 주입
-        // 🟢 addItem 이름표에 함수가 담겨 있음
         set((state) => {
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
@@ -114,6 +102,13 @@ export const useCartStore = create<CartStore>()(
      양식(함수)은 하나, 채우는 내용(item)은 매번 다르다
      → 상품이 100개여도 addItem 함수 하나로 전부 담을 수 있음
 
+   ★★ 왜 인자를 쓰나 = 재사용하려고
+     · 함수를 "빈칸(매개변수) 있는 틀"로 만들어 두고,
+       인자로 매번 다른 값을 채워 넣어 다시 쓴다
+     · ★ 인자가 있어야 같은 함수를 다른 입력으로 쓸 수 있다
+       (인자가 없으면 상품마다 함수를 새로 만들어야 함)
+     · 넣는 쪽 = 인자 / 받아서 처리하는 쪽 = 매개변수
+
    ★ (item)은 "빈 상자"다 — 나중에 누가 채워줄 자리
        addItem: (item) => …
                   ─┬─
@@ -126,6 +121,8 @@ export const useCartStore = create<CartStore>()(
 
    ★ 모든 함수에 통하는 규칙
        "부를 때 괄호 안에 넣은 값" = "정의할 때 만든 매개변수 자리"로 들어간다
+     · ★ 어디서 부르든 상관없다 — 같은 함수를 부르는 거라,
+       인자는 언제나 "그 함수 정의의 매개변수"로 간다
      · item = { id: product.id, slug: product.slug, name: … }  ← 통째로!
        (필드 하나씩 쪼개서 들어가는 게 아니라, 객체 덩어리 그대로)
 
@@ -135,18 +132,41 @@ export const useCartStore = create<CartStore>()(
           이 괄호 안에 들어있는 것 전체가 인자 1개
           (마침 그 인자의 모양이 객체 { } 일 뿐)
 
-   ★★ 정의하는 곳과 부르는 곳은 서로 다른 파일이어도 된다
-     · 함수 정의도, 호출도 어디서나 가능
-     · ★ page에는 매개변수가 없다 — page는 "인자를 넣는 쪽"
-       매개변수 (item)은 정의한 곳(cartStore)에만 있다
-         page       addItem({ … })        인자를 넣는 쪽
-         cartStore  addItem: (item) => …  매개변수를 가진 쪽
+   ★★ 주입 주체 vs 받는 자리
+       page       addItem({ … })        ✅ 주입 주체 = 인자를 넣는 호출자
+       cartStore  addItem: (item) => …  ✅ 받는 자리 = 정의의 매개변수
+     · 함수 정의도, 호출도 어디서나 가능 (다른 파일이어도 됨)
+     · ★ page에는 매개변수가 없다. 매개변수는 정의한 곳에만 있다
 
    ★ 파일 3단계로도 같은 이야기
      🟡 정의   cartStore   addItem: (item) => { … }   빈 상자 만들고 몸통 씀
      🟡 전달   useCart     만든 걸 넘기기               (새로 안 만듦)
      🟡 호출   page        불러서 실행                  addItem({ … })
      → 정의는 한 곳뿐. 나머지는 그걸 넘기고 부르기만 한다
+
+
+   ═════════════════════════════════════════════
+   ★★★ 지금 부르는 것 vs 나중에 불릴 것
+   ═════════════════════════════════════════════
+   같은 파일 안에 "실행 시점"이 완전히 다른 두 가지가 섞여 있다
+
+   🟢 persist(…)           = 내가 지금 부른다
+        · 실행 주체 = 나
+        · 지금 실행돼서 "새 결과(업그레이드된 스토어 설정)"를 리턴함
+        · ★ persist의 일은 리턴까지가 끝이다
+          (인자1 콜백을, 인자2 옵션 설정대로 감싸서 돌려주는 것)
+
+   🟢 (set, get) => ({ … })  = zustand가 나중에 부른다
+        · 실행 주체 = zustand
+        · 내가 적어둘 뿐, 실행 시점은 내가 정하지 않음
+
+   ★ 그래서 한 줄로
+       persist는 콜백(기능)과 옵션(데이터)을 인자로 받아서
+       "저장 기능을 씌운 스토어"를 만들어 돌려준다
+
+   ★ 구분하는 법
+       괄호를 붙여 썼으면        → 지금 실행 (persist(…), create(…))
+       괄호 없이 넘기기만 했으면  → 나중에 남이 실행 (콜백)
 
 
    ═════════════════════════════════════════════
@@ -165,6 +185,17 @@ export const useCartStore = create<CartStore>()(
        실행하면서 state를 채우는 것 → zustand
      · 나는 "이렇게 바꿔줘"라고 적은 함수를 건네줄 뿐
      · 언제 실행할지, 무슨 값을 넣을지는 zustand가 정한다
+
+   ★★ (매개변수) => ({ … }) 이 통째로 "콜백 그 자체"다
+     · 앞의 addItem: 같은 이름표에 이 함수가 담겨 있는 것
+     · 이름표(키)에 함수가 들어앉은 모양
+
+   ★★ 리턴은 안에 쌓이는 게 아니라 밖으로 나간다
+       콜백은 객체를 만들어 "뱉어서" 부른 쪽에 넘긴다
+       → 자기 안에 저장하지 않는다
+       → 그걸 받아가는 건 그 콜백을 부른 zustand
+     · 그래서 addItem 안의 return 값이 곧 "새 상태"가 되는 것
+     · 계산해서 넘기는 역할까지가 콜백의 일
 
    ★★ 함수도 "값"이다 → 그래서 인자로 넘길 수 있다
        state.items.find( (i) => i.id === item.id )
@@ -186,8 +217,6 @@ export const useCartStore = create<CartStore>()(
        items.map / filter / reduce       전부 같은 구조
 
    · { } 는 그 콜백의 코드블록 (실행될 문장들)
-   · 한 문장 해설: 내가 set에 익명 콜백함수를 넣으면 → zustand가 그 콜백을
-     실행하면서 state 자리에 현재 상태를 주입한다 → 콜백은 새 상태를 리턴한다
 
 
    ═════════════════════════════════════════════
@@ -434,7 +463,8 @@ export const useCartStore = create<CartStore>()(
    · ★ (set, get)은 persist의 인자가 아니다. 인자1(콜백 함수)의 "일부"다
      → 인자1이 매개변수를 품고 있는 구조 (한 겹 안쪽)
 
-   · persist는 그냥 "함수", (인자1, 인자2)는 그 함수에 넣는 값들
+   · 인자1 = 기능(콜백) / 인자2 = 데이터(옵션)
+     persist는 이 둘을 받아서 "인자1을 인자2 설정대로 감싼다"
 
 
    ─────────────────────────────────────────────
@@ -526,9 +556,10 @@ export const useCartStore = create<CartStore>()(
    ★★ persist(콜백, 옵션) — 저장 기능을 장착시키는 미들웨어
    ═════════════════════════════════════════════
    persist(
-     (set, get) => ({ … }),          ← 인자1: 콜백함수 = 스토어 알맹이 (상태+함수)
-     { name: 'butter-weather-cart' } ← 인자2: 옵션 (localStorage 키 이름)
+     (set, get) => ({ … }),          ← 인자1: 콜백 = 기능 (스토어 알맹이)
+     { name: 'butter-weather-cart' } ← 인자2: 옵션 = 데이터 (localStorage 키)
    )
+   → 이 둘을 받아서 "저장 기능을 씌운 스토어"를 만들어 리턴한다
 
    ★ persist가 받는 건 "객체"가 아니라 "객체를 만드는 함수"다
        받는 시점        → 아직 함수 (실행 안 됨)
@@ -570,7 +601,7 @@ export const useCartStore = create<CartStore>()(
        value에 화살표가 없으면  →  그냥 데이터
            items: []           값
            isOpen: false       값
-       value에 화살표가 있으면  →  함수 (그 키가 함수가 사는 곳)
+       value에 화살표가 있으면  →  함수 (그 이름표에 함수가 담겨 있는 것)
            addItem: (item) => …
            totalKrw: () => …
      · 객체 하나 안에 "값"과 "함수"가 섞여 있는 구조
@@ -811,16 +842,23 @@ export const useCartStore = create<CartStore>()(
            → useCartStore → useCart → CartDrawer(화면)
 
    · 함수 하나로 상품 100개: 양식(함수)은 하나, 내용(item)은 매번 다름
+       인자를 쓰는 이유 = 재사용 (빈칸 있는 틀 + 매번 다른 값)
        1.정의 (item) 빈 상자 → 2.호출 addItem({…}) → 3.실행 item = {…}
        파일로는 정의(cartStore) → 전달(useCart) → 호출(page)
-       규칙: 부를 때 괄호에 넣은 값 = 정의할 때 만든 매개변수 자리 (통째로)
+       규칙: 어디서 부르든 인자는 그 함수 정의의 매개변수로 간다 (통째로)
        인자 = 괄호 ( ) 안의 값 (중괄호가 아님)
-       page엔 매개변수가 없다 — page는 인자를 넣는 쪽
+       page = 주입 주체(인자 넣는 쪽) / cartStore = 받는 자리(매개변수)
+
+   · 지금 실행 vs 나중 실행
+       persist(…)          내가 지금 부름 → 결과(감싼 스토어)를 리턴. 여기까지가 끝
+       (set,get) => ({…})  zustand가 나중에 부름
+       괄호 붙였으면 지금 / 안 붙이고 넘겼으면 나중
 
    · ★ 콜백은 내가 넣고, 매개변수는 그 메서드가 채운다
        함수도 값이라서 인자로 넘길 수 있음 (find의 괄호 안 = find의 인자)
        find의 (i) 출처는 state.items, i를 주입하는 건 find
        persist·set·find·map·filter·reduce 전부 같은 구조
+       리턴은 안에 쌓이는 게 아니라 밖으로 나감 (부른 쪽이 받아감)
 
    · state는 스토어 "전체"가 들어옴 → .items로 꺼내 씀
        zustand는 주입만, 확인(find)은 내가
@@ -836,7 +874,7 @@ export const useCartStore = create<CartStore>()(
 
    · 키:값 판별 — value에 화살표 없으면 데이터 / 있으면 함수
        items: [] · isOpen: false     = 값
-       addItem: (item) => …          = 함수가 사는 곳
+       addItem: (item) => …          = 이름표에 함수가 담긴 것
 
    · 🟡 값의 출처 3가지
        ① 태초: 코드 초기값 (items: [] — 값 X, 자리 O)
@@ -880,7 +918,7 @@ export const useCartStore = create<CartStore>()(
      (매개변수) => (리턴할 몸통)  — 이 한 줄 전체가 이름 없는 함수 하나
 
    · 인자 vs 매개변수는 층이 다름
-       persist(인자1, 인자2) — 인자1 = 콜백 "함수 전체"
+       persist(인자1, 인자2) — 인자1 = 콜백(기능) / 인자2 = 옵션(데이터)
        (set, get) = 그 인자1이 품고 있는 매개변수 (한 겹 안쪽)
 
    · 커링 3층: 겉(create) → 중간(persist) → 속(알갱이)
