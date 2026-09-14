@@ -1,3 +1,9 @@
+/**
+ * 누구의 매개변수인지ㅡ 누가 채우는지
+ * 채우는 사람이 다른 이유 부르는 사람 = 채우는 사람
+ * - item ← page가 addItem 부르면서 넣음
+ */
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -28,12 +34,23 @@ interface CartStore {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
-      items: [],
+      // ⭐️⭐️ 콜백 A ⭐️⭐️ persist한테 넘김
+      // 🟢 콜백은 지금 실행 되는 게 아님. 이 객체를 뱉는다(리턴) 정의 -> 실행하는 건 나중에 zustand 주관
+      // ⭐️ 콜백이 새 배열을 계산해서 내놓으면, set이 그걸 스토어에 써넣는다. ⭐️
+      items: [], // 🟢 상품들을 담는 '배열' []
       isOpen: false,
       addItem: (item) =>
+        //      ==== page가 보낸 상품 하나의 객체, 배열 아님!
         set((state) => {
+          // ⭐️⭐️ 콜백 B ⭐️⭐️ set에 넘김
+          // 주입받은 item으로 'set' 통해 객체 리턴 -> set이 items를 채운다
+          // ⭐️ set ⭐️
+          // 1. set은 리턴된 {items: 새 배열}을 받아서 a) 스토어에 반영 b) merge - set이 바뀐 것만 갈아끼우고 나머지는 유지
+          // 2. 채운다는 의미 : 새 배열로 교체
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
+            // if는 리턴 안한단다.
+            // 🟢existing이 참일 때 실행되는 함수 (set 콜백)의 리턴
             return {
               items: state.items.map((i) =>
                 i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i

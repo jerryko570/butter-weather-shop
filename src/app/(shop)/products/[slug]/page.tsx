@@ -16,7 +16,7 @@ import { trackEvent } from '@/lib/utils/analytics'
 type Tab = 'detail' | 'shipping'
 
 export default function ProductDetailPage() {
-  const { slug } = useParams<{ slug: string }>()
+  const { slug } = useParams<{ slug: string }>() // 🟡 뽑기 🟡
   const router = useRouter()
   const { locale } = useT()
   const { data: product, isLoading, error } = useProduct(slug) // RQ가 data, error 담고 상태만 갱신
@@ -24,6 +24,8 @@ export default function ProductDetailPage() {
   // 🟢 함수마다 뭘 받을지 (인자모양)을 정해놨고, 부를 땐 그 규칙대로 넣는다. (인자는 넣는다!)
   // 🟢 인자를 넣고 useProduct가 그걸 받아 조회함
   // 🟢🟢 slug를 넣고 부름 -> useProduct 실행 -> 꾸러미 구조분해를 리턴 🟢🟢
+  // 🟡 const A = B 인 경우 오른쪽 (B)부터 실행 -> 그 결과를 왼쪽(A)이 받음
+  // 🟡 넣기 🟡    ㄴ> useProduct(slug) 부르는 게 먼저 (URL의 slug)
 
   const purchase = usePurchase()
   const payment = usePayment()
@@ -108,6 +110,7 @@ export default function ProductDetailPage() {
       })
       // {data: product} 로 꺼내 필요한 칸만 골라 {} 새 객체 만들고
       // addItem(item) 매개변수에 주입
+      // 🟢 for 안 (반복) vs for 박 (1번)
     }
     openCart() // for문 밖에서는 1번만 실행됨
   }
