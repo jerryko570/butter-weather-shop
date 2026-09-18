@@ -42,13 +42,14 @@ export const useProduct = (slug: string) => {
   const supabase = createClient()
 
   return useQuery({
+    // 🟢 useQuery에 넣어주는 인자
     queryKey: ['product', slug],
     queryFn: async () => {
       const { data, error } = await supabase
         //                        ㄴ 데이터를 요청하고 받는다 (읽기 방향)
         .from('products')
         .select('*') // 전체 열
-        .eq('slug', slug) // slug 조건으로 요청 보냄 → 데이터를 받아옴
+        .eq('slug', slug) // slug 조건으로 요청 보냄 → 데이터를 받아옴 (테이블 칸 이름)
         .eq('is_active', true)
         .single() // 한 행을 객체로
       if (error) throw error

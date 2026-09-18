@@ -111,6 +111,8 @@ export default function ProductDetailPage() {
       // {data: product} 로 꺼내 필요한 칸만 골라 {} 새 객체 만들고
       // addItem(item) 매개변수에 주입
       // 🟢 for 안 (반복) vs for 박 (1번)
+      // 🟢 supabase의 원본이 아닌 골라 만든 새 객체
+      // 🟢 supabase product 17칸 -> 6칸만 골라 새 객체 만듦 (addItem(item))
     }
     openCart() // for문 밖에서는 1번만 실행됨
   }
