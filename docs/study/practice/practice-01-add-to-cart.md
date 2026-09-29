@@ -109,11 +109,17 @@ export const useCartStore = create<CartStore>()(
       addItem: (item) =>
         set((state) => {
           // 1. 이미 담긴 상품 있나? (find)
-
-
-
+          const existing = state.items.find((i) => {
+            i.id === item.id
           })
           // 2. 있으면 → 그 칸만 quantity +1 (map + 스프레드)
+          if(existing) {
+            return {
+              item: state.items.map((i) => {
+                i.id === item.id ? {...i, quantity: i.quantity + 1}
+              })
+            }
+          }
 
           // 3. 없으면 → 배열 뒤에 새로 추가 (스프레드 + quantity: 1)
         }),
