@@ -183,6 +183,33 @@ existing = 있으면 그 객체(truthy) / 없으면 undefined(falsy)
 
 ---
 
+## 7. ✅ 마스터 확인 — uuid로 dry run (2026-09-27)
+
+find 한 줄을 실제 값으로 굴려서 완전히 체화 확인.
+
+```ts
+[{id:'uuid1', slug:'test1'}, {id:'uuid2', slug:'test2'}].find((i) => i.id === item.id)
+```
+
+`item.id = 'uuid2'` 라면:
+
+```
+1바퀴: i = {id:'uuid1', slug:'test1'} → 'uuid1' === 'uuid2'? ❌ → 다음
+2바퀴: i = {id:'uuid2', slug:'test2'} → 'uuid2' === 'uuid2'? ✅ → 찾음! 멈춤
+existing = {id:'uuid2', slug:'test2'}   ← 이 객체 "통째로" 저장
+```
+
+- ★ **find가 제공하는 `i` = 객체 덩어리 하나씩** (배열 X — items가 배열, i는 그 한 칸)
+- ★ 맞는 **객체 1개를 통째로** existing에 저장 (id만 X)
+- ★ 못 찾으면 `existing = undefined` → 다음 줄 `if(existing)`에서 "새로 추가 갈래"로
+
+### 왜 id로 비교? 왜 객체 전체를 i에?
+
+- **id로 비교하는 이유** = id(uuid)는 안 겹치는 고유값(상품 주민번호, DB 실측). name/price는 상품끼리 겹칠 수 있어 위험. 같은 상품이면 id 같음 → slug·name·price·image도 다 같음.
+- **객체 전체를 i에 받는 이유** = 비교는 id만 하지만, **id가 객체 "안"에 살아서** 객체를 먼저 받아야 `.id`를 꺼냄. + 장바구니는 id 외 이름·가격·수량도 다 필요.
+
+---
+
 ## ▶ 다음에 여기서 시작
 
 - `if (existing)` 분기의 **불변성** — 있으면 `map`으로 그 상품만 quantity+1한 **새 배열**, 없으면 `[...state.items, {...item, quantity:1}]`로 **새 배열**에 추가.

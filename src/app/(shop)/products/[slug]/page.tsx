@@ -16,16 +16,10 @@ import { trackEvent } from '@/lib/utils/analytics'
 type Tab = 'detail' | 'shipping'
 
 export default function ProductDetailPage() {
-  const { slug } = useParams<{ slug: string }>() // 🟡 뽑기 🟡
+  const { slug } = useParams<{ slug: string }>()
   const router = useRouter()
   const { locale } = useT()
-  const { data: product, isLoading, error } = useProduct(slug) // RQ가 data, error 담고 상태만 갱신
-  //                                                   ======= 인자 넣는 값 (부름 -> 결과 꾸머리 나옴)
-  // 🟢 함수마다 뭘 받을지 (인자모양)을 정해놨고, 부를 땐 그 규칙대로 넣는다. (인자는 넣는다!)
-  // 🟢 인자를 넣고 useProduct가 그걸 받아 조회함
-  // 🟢🟢 slug를 넣고 부름 -> useProduct 실행 -> 꾸러미 구조분해를 리턴 🟢🟢
-  // 🟡 const A = B 인 경우 오른쪽 (B)부터 실행 -> 그 결과를 왼쪽(A)이 받음
-  // 🟡 넣기 🟡    ㄴ> useProduct(slug) 부르는 게 먼저 (URL의 slug)
+  const { data: product, isLoading, error } = useProduct(slug)
 
   const purchase = usePurchase()
   const payment = usePayment()
@@ -107,14 +101,10 @@ export default function ProductDetailPage() {
         price_krw: product.price_krw,
         price_usd: product.price_usd,
         image: product.images?.[0] ?? '',
+        //                   ==== 안전한 점 표기법 ?. 없어도 안 터지게 함
       })
-      // {data: product} 로 꺼내 필요한 칸만 골라 {} 새 객체 만들고
-      // addItem(item) 매개변수에 주입
-      // 🟢 for 안 (반복) vs for 박 (1번)
-      // 🟢 supabase의 원본이 아닌 골라 만든 새 객체
-      // 🟢 supabase product 17칸 -> 6칸만 골라 새 객체 만듦 (addItem(item))
     }
-    openCart() // for문 밖에서는 1번만 실행됨
+    openCart()
   }
 
   const images = product.images?.length ? product.images : []
@@ -480,6 +470,40 @@ function ShippingBlock({
 
 
    ═════════════════════════════════════════════
+   ★★★ 한 줄 읽는 순서 — 🟡 넣기 먼저, 🟡 뽑기 나중
+   ═════════════════════════════════════════════
+   ⭐️ const A = B  →  오른쪽(B)부터 실행 → 그 결과를 왼쪽(A)이 받는다
+     · 왼쪽부터 읽으면 순서가 거꾸로다. 항상 오른쪽이 먼저
+
+   const { data: product, isLoading, error } = useProduct(slug)
+         └────────────┬────────────┘           └──────┬──────┘
+              ② 🟡 뽑기 (구조분해)                 ① 🟡 넣기 (호출)
+              나온 꾸러미에서 꺼냄                  slug를 넣고 부름
+
+   ▸ 실제 일어나는 순서
+     ① slug를 인자로 넣고 useProduct를 부른다   ← URL에서 뽑아온 slug
+     ② useProduct가 그 slug로 조회한다
+     ③ 결과 "꾸러미"를 리턴한다  { data, isLoading, error, … }
+     ④ 그 꾸러미에서 필요한 칸만 뽑아 변수에 담는다 (구조분해)
+
+   ★★ 넣기 🟡 와 뽑기 🟡 는 방향이 반대다 — 이걸 섞으면 헷갈린다
+       넣기   인자를 함수 "안으로" 밀어넣음      useProduct(slug)
+       뽑기   리턴된 꾸러미에서 "밖으로" 꺼냄    const { data, … } =
+
+   ★ 인자는 넣는 것이다 (꺼내는 게 아니다)
+     · 함수마다 "뭘 받을지(인자 모양)"를 미리 정해놨고,
+       부를 땐 그 규칙대로 값을 넣어준다
+     · useProduct는 slug 하나를 받기로 되어 있음 → slug를 넣고 부름
+     · ★ cartStore의 addItem(item)과 완전히 같은 구조
+
+   ★ useParams도 같은 한 줄이다
+       const { slug } = useParams<{ slug: string }>()
+             └──┬──┘                └─────┬─────┘
+             🟡 뽑기                    ① 실행 (URL 읽기)
+     · 여기서 뽑은 slug가 바로 다음 줄 useProduct(slug)의 "넣는 값"이 된다
+
+
+   ═════════════════════════════════════════════
    ★★★ 같은 줄인데 값이 달라진다 — 리렌더가 갱신 방식
    ═════════════════════════════════════════════
    const { data: product, isLoading, error } = useProduct(slug)
@@ -561,6 +585,13 @@ function ShippingBlock({
        onClick={handleAddToCart()}   ✗ 렌더될 때 즉시 실행돼버림
      · 이건 cartStore의 "콜백은 내가 넣고, 실행은 남이" 와 같은 이야기
      · 넘길 땐 괄호 없이, 지금 값이 필요할 때만 괄호
+
+   ★★ ⚠️ 순서를 거꾸로 읽기 쉬운 지점
+       ✗ "handleAddToCart를 실행한 뒤 onClick에 넘긴다"
+       ○ "함수 자체를 onClick에 등록해 두고, 클릭될 때 React가 실행한다"
+     · 등록이 먼저, 실행이 나중이다 (실행은 아예 안 일어날 수도 있음 — 안 누르면)
+     · onClick={handleAddToCart} = 클릭 시 실행할 콜백을 "등록"하는 것 = 출발점
+     · ★ 누가 실행하나? → 내가 아니라 React. 방아쇠를 맡긴 것 (cartStore와 동일)
 
    · 반대로 훅은 지금 결과가 필요하니까 괄호를 붙인다
        const purchase = usePurchase()   ← 실행 결과(꾸러미)를 담음
@@ -700,12 +731,35 @@ function ShippingBlock({
      · cartStore 메모의 "() => { … } vs () => ({ … })" 와 같은 구분
        (중괄호만 = 코드블록 / 소괄호로 감싸면 = 객체)
 
-   · openCart()는 몸통 밖에 있다 → 반복이 다 끝난 뒤 딱 한 번 실행
+   ★★ 🟢 for 안 vs for 밖 — 들여쓰기 한 칸이 횟수를 가른다
+       for 안 (몸통 { } 안)   addItem({ … })   → quantity번 반복
+       for 밖 (몸통 뒤)       openCart()       → 반복 끝나고 딱 1번
+     · ★ 패널은 한 번만 열면 되니까 밖에 둔다 (안에 넣으면 3번 여는 셈)
+     · 판단 기준: "매번 해야 하나, 한 번이면 되나"
 
 
    ═════════════════════════════════════════════
    ★ 담기에서 넘기는 값 — 주의할 것
    ═════════════════════════════════════════════
+   ⭐️ 넘기는 건 supabase 원본이 아니다 — "골라서 새로 만든 객체"다
+
+       supabase products   17칸짜리 product        ← RQ로 받아온 원본
+              ↓ 필요한 것만 고름
+       addItem({ … })      6칸짜리 새 객체          ← 여기서 새로 태어남
+              ↓ 인자로 주입
+       cartStore           addItem: (item) => …    ← item 자리에 꽂힘
+
+   ★ 두 단계로 나눠 보면 명확하다
+       ① { data: product } 로 꺼냄      꾸러미에서 원본을 뽑기 🟡
+       ② { id, slug, name, … } 로 추림   필요한 칸만 골라 새 객체 만들기
+     · ★ 원본을 통째로 넘기지 않는다 — CartItem 타입에 맞는 6칸만
+     · ★ 그래서 장바구니의 item은 product와 "다른 객체"다 (복사본이자 축약본)
+
+   ★ 사용자가 정하는 건 딱 두 가지뿐
+       어떤 상품을  (어느 페이지에서 눌렀나 → product)
+       몇 개를      (quantity → for문이 도는 횟수)
+     · 나머지 6칸의 값은 전부 DB에서 온 것. 사용자가 손댈 수 없다
+
    ★ 점 표기법으로 필요한 것만 꺼낸다
        product      = 객체(object)
        product.id   = 그 객체의 속성(프로퍼티)을 꺼내는 것
@@ -805,6 +859,13 @@ function ShippingBlock({
    · 컴포넌트 4단: 재료 준비 → 관문 → 동작 정의 → 화면 그리기
      훅은 무조건 맨 위 (조건문 안 X) → 그래서 관문이 훅보다 아래
 
+   · ⭐️ const A = B 는 오른쪽(B)부터 실행 → 결과를 왼쪽(A)이 받음
+       const { data: product, … } = useProduct(slug)
+       ① 🟡 넣기  slug를 인자로 넣고 부름 (오른쪽)
+       ② 🟡 뽑기  나온 꾸러미에서 필요한 칸만 꺼냄 (왼쪽, 구조분해)
+       넣기 = 함수 안으로 / 뽑기 = 리턴에서 밖으로 → 방향이 반대
+       ★ 인자는 "넣는" 것 — 함수가 정해둔 모양대로 값을 밀어넣는다
+
    · 🟡 useProduct 3상태: 처음(로딩) / 성공(data) / 실패(error)
        갱신은 리렌더로 — 컴포넌트가 다시 실행되며 그 줄이 새 값을 받음
        React Query = 가져오고 갱신하는 엔진 (+리렌더)
@@ -814,6 +875,8 @@ function ShippingBlock({
        handleAddToCart    함수 자체 (넘기는 용) → onClick={handleAddToCart}
        handleAddToCart()  지금 실행해서 결과 사용
        훅은 결과가 필요해서 괄호 O — const purchase = usePurchase()
+       ⚠️ 순서 주의: "실행 후 onClick에 넘긴다"가 아니다
+          등록이 먼저 → 클릭될 때 React가 실행 (안 누르면 실행 안 됨)
 
    · 훅은 실행해서() 담는다 = 함수가 아니라 "실행 결과 꾸러미"
        purchase.mutate / isPending / isError / error
@@ -838,14 +901,20 @@ function ShippingBlock({
    · for (제어부) { 몸통 }
        제어부 = 몇 번 돌지 (시작값 / 계속조건 / 매번증가)
        몸통   = 뭘 반복할지 → 이 안의 코드가 quantity번 실행
-       i는 카운터일 뿐 안 씀 / openCart()는 몸통 밖 → 끝나고 1번
+       i는 카운터일 뿐 안 씀
+       🟢 for 안 = 반복(addItem) / for 밖 = 1번(openCart)
+          기준: 매번 해야 하나, 한 번이면 되나
 
    · { } 두 종류 구분
        코드블록 { } = 실행 문장 (찾아라·바꿔라) → 동작 = 동사
        객체 { }     = 키:값 나열               → 데이터 = 명사
 
    · 점 표기법: product = 객체 / product.id = 속성 꺼내기 / id = 속성 이름
-       필요한 컬럼만 골라 담는다
+
+   · ⭐️ 넘기는 건 원본이 아니라 "골라 만든 새 객체"
+       supabase product 17칸 → 6칸만 골라 새 객체 → addItem(item)에 주입
+       장바구니의 item은 product와 다른 객체 (복사본이자 축약본)
+       사용자가 정하는 건 어떤 상품 / 몇 개 — 나머지 값은 전부 DB에서 옴
 
    · price_krw는 단가로 넘긴다 — 합계는 스토어가 곱함 (여기서 곱하면 중복)
      image는 images[0] 한 장만, 없으면 '' (undefined보다 안전)
