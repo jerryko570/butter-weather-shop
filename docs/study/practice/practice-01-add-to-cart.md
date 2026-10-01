@@ -47,23 +47,8 @@
 ```ts
 // 여기에 handleAddToCart 를 쳐보세요 ↓
 
-const handleAddToCart = () => {
-  for (let i = 0; i < quantity; i++) {
-    // === i를 처음 만날 때는 let 또는 const 필요
-    // 변수는 태어난다고 신고해야 함
-    addItem({
-      id: product.id,
-      slug: product.slug,
-      name: product.name,
-      price_krw: product.price_krw,
-      price_usd: product.price_usd,
-      image: product.images?.[0] ?? '',
-      // ㄴ 장바구니에 담을 칸 1장 | images: DB에서 온 이미지 배열 (여러장)
-    })
-    openCart()
-    // for문 안에 넣으면 상품 3개 담을 때 서랍 3번 열러서 for문 밖으로
-  }
-}
+
+
 ```
 
 <details>
@@ -108,24 +93,17 @@ export const useCartStore = create<CartStore>()(
       isOpen: false,
       addItem: (item) =>
         set((state) => {
-          // 1. 이미 담긴 상품 있나? (find)
-          const existing = state.items.find((i) => {
-            i.id === item.id
-          })
-          // 2. 있으면 → 그 칸만 quantity +1 (map + 스프레드)
-          if(existing) {
-            return {
-              item: state.items.map((i) => {
-                i.id === item.id ? {...i, quantity: i.quantity + 1}
-              })
-            }
-          }
+          // 1. 이미 담겼나? some/find 로 확인 → existing 변수에 담기
 
-          // 3. 없으면 → 배열 뒤에 새로 추가 (스프레드 + quantity: 1)
+          // 2. 있으면(if existing) → items 를 map 으로 새 배열
+          //    그 칸만 { ...i, quantity 올리기 }, 나머지는 : i 그대로
+
+          // 3. 없으면 → [ ...기존, { ...item, quantity 처음값 } ] 새 배열
         }),
+      // ... 나머지 함수들
     }),
     {
-      /* 저장 이름표 */
+      /* 저장 이름표 (name) */
     }
   )
 )
@@ -184,7 +162,7 @@ export const useCartStore = create<CartStore>()(
       isOpen: false,
       addItem: (item) =>
         set((state) => {
-          const existing = state.items.find((i) => i.id === item.id)
+          const existing = state.items.some((i) => i.id === item.id)
           if (existing) {
             return {
               items: state.items.map((i) =>
