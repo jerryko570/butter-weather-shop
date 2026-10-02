@@ -46,9 +46,6 @@
 
 ```ts
 // 여기에 handleAddToCart 를 쳐보세요 ↓
-
-
-
 ```
 
 <details>
@@ -56,12 +53,19 @@
 
 ```ts
 const handleAddToCart = () => {
-  for ( 수량만큼 반복 ) {
+  for ( let = i; i < quantity; i++ ) {
     addItem({
       // product 에서 6칸 골라 담기 (점 표기법)
+      id: product.id,
+      slug: product.slug,
+      name: product,name,
+      price_krw: product.price_krw,
+      price_usd: product.price_usd,
+      image: product.images?.[0] ?? ''
     })
   }
   // 다 담았으면 서랍 열기
+  openCart()
 }
 ```
 
@@ -94,12 +98,22 @@ export const useCartStore = create<CartStore>()(
       addItem: (item) =>
         set((state) => {
           // 1. 이미 담겼나? some/find 로 확인 → existing 변수에 담기
+          // some = true / false boolean
+            const existing = state.items.some((i) =>
+            i.id === item.id)
 
           // 2. 있으면(if existing) → items 를 map 으로 새 배열
-          //    그 칸만 { ...i, quantity 올리기 }, 나머지는 : i 그대로
-
+            if (existing) {
+              return {
+                items: state.items.map((i) =>
+                i.id === item.id ? {...i , quantity: i.quantity+1}:i)
+              }
+            }
           // 3. 없으면 → [ ...기존, { ...item, quantity 처음값 } ] 새 배열
-        }),
+          return {
+            items: [...state.items, {...item, quantity: 1}]
+          }
+
       // ... 나머지 함수들
     }),
     {
