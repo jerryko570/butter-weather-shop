@@ -101,7 +101,6 @@ export default function ProductDetailPage() {
         price_krw: product.price_krw,
         price_usd: product.price_usd,
         image: product.images?.[0] ?? '',
-        //                   ==== 안전한 점 표기법 ?. 없어도 안 터지게 함
       })
     }
     openCart()

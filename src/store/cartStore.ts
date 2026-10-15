@@ -31,6 +31,8 @@ export const useCartStore = create<CartStore>()(
       items: [],
       isOpen: false,
       addItem: (item) =>
+        // ⭐️ 콜백이 return으로 던지고 → set이 받아서 → store(창고)에 써넣는다.
+        // set = 창고에 쓰는 동작. 저장은 store가, 백업은 persist(localStorage)가 한다.
         set((state) => {
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
@@ -42,6 +44,8 @@ export const useCartStore = create<CartStore>()(
           }
           return { items: [...state.items, { ...item, quantity: 1 }] }
         }),
+      // 지울 땐 누군지만 알면 된다
+      // 🟢 filter는 남기는 도구 | store의 공개버튼
       removeItem: (id) =>
         set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
       updateQuantity: (id, quantity) =>
@@ -411,21 +415,38 @@ export const useCartStore = create<CartStore>()(
    · 둘 다 스토어 "전체"를 주고 .items로 꺼내 쓰는 건 똑같다
 
    ★★★ set의 두 형태 — 언제 (state)=>를 쓰나
+   ⭐️ 한 줄 규칙
+       "새 값이 이전 값에 의존하면 → 콜백(함수) 형태로 이전 값을 받는다"
+
      형태 A  set({ … })             덮어쓰기 — 새 값만 있으면 됨
              clearCart / openCart / closeCart
+             · 이전 값을 몰라도 정할 수 있다 (items: [] / isOpen: true)
      형태 B  set((state) => { … })  업데이트 — 옛 값을 봐야 새 값을 정함
              addItem / removeItem / updateQuantity
+             · 이전 배열을 읽어야 다음 배열을 만들 수 있다 → 콜백으로 받는다
+   · ★ 콜백 형태를 쓰는 유일한 이유 = "이전 값이 필요해서"
+   · ⚠️ 받아오는 "이전 값"은 item이 아니라 state(= 스토어 전체, 그중 옛 items)다
+       item   page가 방금 건넨 새 재료   → 바깥에서 들어온 것
+       state  스토어의 지금 값           → set이 꽂아주는 것
+     → 둘 다 쓰지만 출처가 다르다 (5번 섹션 클로저 ①-b)
 
    ★ state는 스토어 "전체"가 들어온다
      · zustand는 주입만 한다. "이미 담긴 상품인지" 확인은 내가 find로
      · state(root) → .items(값 꺼내기) → .메서드()(동작)
 
    ★★★ set이 하는 일 — 받아서 반영하고 병합한다
+   ⭐️ 콜백이 던지고(return), set이 받는다
      1️⃣ 반영 — items 칸을 새 배열로 "통째로 갈아끼움" (덧붙이기 X)
                옛 배열은 아무도 안 써서 버려진다
      2️⃣ 병합 — 넘긴 키만 바꾸고 나머지 칸(isOpen 등)은 그대로
      + 리렌더 + persist 저장 트리거
    · 콜백 = 새 값을 "계산" / set = 그 값을 "써넣기"
+
+   ★★ set은 콜백을 "받아 자기가 실행하는" 함수다
+     · ⚠️ 들고만 있는 게 아니다 — 실행하고, 써넣고, 화면까지 갱신시킨다
+         ① 콜백을 받아둠  ② 실행하며 (state) 빈칸에 지금 상태를 꽂음
+         ③ 리턴값을 받아 스토어에 써넣음  ④ 구독 컴포넌트 리렌더 + persist 트리거
+     · ★ 내가 하는 일은 ①에 넘겨주는 것까지. ②~④는 전부 set의 일
 
    ★★ 구독 ≠ state
        state = 콜백 안에서 "지금 값"을 받는 것 (스토어 내부 일)
@@ -451,9 +472,11 @@ export const useCartStore = create<CartStore>()(
    const existing = state.items.find((i) => i.id === item.id)
          ────┬───   ─────┬─────  ──┬─  └────────┬────────┘
        결과 담는 변수  현재 배열    메서드     조건식(콜백)
+   · ★ state.items = 들어온 입력(읽기용). 여기서 꺼내 쓰기만 한다
    · 배열을 한 칸씩 i에 넣어 조건식을 묻고, 맞는 "첫 요소"에서 즉시 멈춤
    · 리턴: 찾으면 그 객체 / 못 찾으면 undefined (★ [] 아님!)
    · ⚠️ 이 줄은 "확인"만 — 아무것도 안 바꾼다. 바꾸기는 return을 set이 받아서
+   · 한 줄 흐름: 들어온 입력(읽기) → 내가 새 상태를 만들어 리턴 → set이 교체
    · 왜 객체를 주나? id도 quantity도 꺼내 쓰려면 칸 전체(객체)가 필요
    · find는 범용 도구 — 무엇을 비교할지(i.id === item.id)는 내가 정한다
 
@@ -473,8 +496,26 @@ export const useCartStore = create<CartStore>()(
    · if ( ) 안은 참/거짓 — ⭐️ 객체는 무조건 참(빈 {} 도), undefined는 거짓
      → existing !== undefined 라고 길게 안 써도 된다
    · 어느 쪽이든 리턴 모양은 똑같다 → { items: 새 배열 }
+   · ★ if 안에서 existing을 꺼내 쓸 수 있는 건 find가 "대상"을 만들어줬기 때문
+       find가 대상을 집어 변수에 담아둠 → 그 뒤로는 그걸 꺼내 쓰기만 하면 됨
 
    ─── ③ map + 스프레드 — 뒤에 쓴 키가 이긴다 ───
+   ★★ ⭐️ 한 줄에 items가 두 번 나온다 — 이름표 vs 재료
+       items: state.items.map((i) => …)
+       ──┬──  ─────┬─────
+       이름표      재료
+       (목적지)    (읽어오는 옛 배열)
+
+     · 왼쪽 items  = "스토어의 이 칸에 넣어라" → 쓰는 쪽 (목적지)
+     · 오른쪽 items = "이걸 재료로 삼아 읽어라" → 읽는 쪽 (옛 배열)
+     · ⭐️ 한 문장으로: 옛 items를 재료로 새 배열을 만들어서 왼쪽 이름표에 넣어라
+     · 같은 이름이지만 역할이 반대 — 읽기 자리 / 쓰기 자리
+
+   ★ 더하기(2, 3) → 5 와 같은 구조
+       합계 = 더하기(2, 3)      재료 2,3 → 결과 5 → 이름표 "합계"에 들어감
+       items = map(옛 items)    재료 옛배열 → 결과 새배열 → 이름표 "items"에
+     · 재료는 그대로 있고, 결과만 새로 나온다 (= 불변성)
+
    ★★ 세 층으로 끊어 읽기
      🟢🟢🟢 3층  items: …                  set에게 줄 결과 ("items 칸을 이걸로")
      🟢🟢   2층  state.items.map((i) => …)  새 배열 — 전부 돌며, 길이 그대로
@@ -624,6 +665,18 @@ export const useCartStore = create<CartStore>()(
              item은 set에 넘기는 게 아니라 콜백 B가 바깥에서 꺼내 쓰는 값
    · return은 부른 자리로 돌아간다. 받는 사람 없으면 증발
    · set 두 형태: 덮어쓰기 set({…}) / 업데이트 set((state)=>{…})
+       ⭐️ 새 값이 이전 값에 의존하면 → 콜백 형태로 이전 값을 받는다
+   · state.items = 들어온 입력(읽기용) → 새 상태를 만들어 리턴 → set이 교체
+       ⚠️ 받아오는 이전 값은 item이 아니라 state다 (item은 page가 준 새 재료)
+
+   · ⭐️ 콜백이 던지고(return), set이 받는다
+       set은 들고만 있는 게 아니다 — 실행·써넣기·리렌더까지 전부 set의 일
+       내 일은 콜백을 넘겨주는 것까지
+
+   · ⭐️ items: state.items.map(…) — 같은 이름이 두 번, 역할은 반대
+       왼쪽 items = 이름표(목적지, 쓰기) / 오른쪽 items = 재료(옛 배열, 읽기)
+       "옛 items를 재료로 새 배열을 만들어 왼쪽 이름표에 넣어라"
+       더하기(2,3) → 5 와 같은 구조. 재료는 그대로, 결과만 새로 나온다
    · set = 새 배열로 갈아끼움 + 넘긴 키만 병합 + 리렌더 + persist 트리거
    · find = 확인(객체 or undefined) / map = 실제작업(같은 길이 새 배열)
    · map은 추가 불가 → 없으면 [...items, 새 객체]
