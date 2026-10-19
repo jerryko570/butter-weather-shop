@@ -31,8 +31,6 @@ export const useCartStore = create<CartStore>()(
       items: [],
       isOpen: false,
       addItem: (item) =>
-        // ⭐️ 콜백이 return으로 던지고 → set이 받아서 → store(창고)에 써넣는다.
-        // set = 창고에 쓰는 동작. 저장은 store가, 백업은 persist(localStorage)가 한다.
         set((state) => {
           const existing = state.items.find((i) => i.id === item.id)
           if (existing) {
@@ -44,8 +42,6 @@ export const useCartStore = create<CartStore>()(
           }
           return { items: [...state.items, { ...item, quantity: 1 }] }
         }),
-      // 지울 땐 누군지만 알면 된다
-      // 🟢 filter는 남기는 도구 | store의 공개버튼
       removeItem: (id) =>
         set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
       updateQuantity: (id, quantity) =>
@@ -54,6 +50,7 @@ export const useCartStore = create<CartStore>()(
             quantity === 0
               ? state.items.filter((i) => i.id !== id)
               : state.items.map((i) => (i.id === id ? { ...i, quantity } : i)),
+          //                                               ====== 교체
         })),
       clearCart: () => set({ items: [] }),
       openCart: () => set({ isOpen: true }),
@@ -442,6 +439,13 @@ export const useCartStore = create<CartStore>()(
      + 리렌더 + persist 저장 트리거
    · 콜백 = 새 값을 "계산" / set = 그 값을 "써넣기"
 
+   ★★ ⭐️ 쓰는 동작 / 저장하는 곳 / 백업하는 곳 — 셋을 나눠 보기
+       set      창고에 "쓰는 동작"          → 행위
+       store    그 값이 실제로 "있는 곳"     → 장소 (메모리)
+       persist  그걸 localStorage에 "백업"   → 사본 뜨기
+     · ★ set은 저장소가 아니다. 저장은 store가, 백업은 persist가 한다
+     · 새로고침하면 store는 날아가고 localStorage만 남는 이유도 이 구분 때문
+
    ★★ set은 콜백을 "받아 자기가 실행하는" 함수다
      · ⚠️ 들고만 있는 게 아니다 — 실행하고, 써넣고, 화면까지 갱신시킨다
          ① 콜백을 받아둠  ② 실행하며 (state) 빈칸에 지금 상태를 꽂음
@@ -566,6 +570,28 @@ export const useCartStore = create<CartStore>()(
      items: state.items.filter((i) => i.id !== id)   // 그 id만 빼고 새 배열
    }))
 
+   ★★ ⭐️ 지울 땐 "누군지"만 알면 된다 — 그래서 id 하나만 받는다
+       addItem    (item)  객체 통째로   담으려면 이름·가격·이미지가 다 필요
+       removeItem (id)    문자열 하나   빼려면 "누구를"만 알면 됨
+     · ★ 받는 인자의 크기 = 그 일에 꼭 필요한 정보의 양
+     · 이미 창고에 다 들어 있으니 다시 넘길 이유가 없다
+
+   ★★ ⭐️ filter는 "빼는" 도구가 아니라 "남기는" 도구다
+       state.items.filter((i) => i.id !== id)
+                               ─────┬─────
+                          "참이면 남겨라" 는 조건
+
+     · filter는 조건이 참인 칸만 모아 새 배열을 만든다 (= 남기기)
+     · i.id !== id = "이 칸의 id가 지울 id와 다르면 남겨라"
+       → 결과적으로 그 하나만 빠지는 것. 빼는 게 아니라 "안 남긴" 것
+     · ⚠️ 부호 주의: 찾을 땐 === (find) / 남길 땐 !== (filter)
+     · map과 비교: map은 길이 그대로(갈아끼우기) / filter는 길이가 줄 수 있음
+
+   ★ removeItem·addItem 같은 것들 = store의 "공개 버튼"
+     · 바깥(컴포넌트)에서 누를 수 있게 내놓은 조작 버튼
+     · items를 직접 건드리게 두지 않고, 정해진 버튼으로만 바꾸게 한다
+     · → 바꾸는 경로가 한 곳으로 모여서 추적·디버깅이 쉬워진다
+
    updateQuantity: (id, quantity) => set((state) => ({
      items: quantity === 0
        ? state.items.filter((i) => i.id !== id)                   // 0이면 제거
@@ -678,6 +704,16 @@ export const useCartStore = create<CartStore>()(
        "옛 items를 재료로 새 배열을 만들어 왼쪽 이름표에 넣어라"
        더하기(2,3) → 5 와 같은 구조. 재료는 그대로, 결과만 새로 나온다
    · set = 새 배열로 갈아끼움 + 넘긴 키만 병합 + 리렌더 + persist 트리거
+       ⭐️ set 쓰는 동작 / store 있는 곳 / persist 백업 — 셋은 다른 것
+
+   · ⭐️ filter는 "빼는" 도구가 아니라 "남기는" 도구
+       i.id !== id = "다르면 남겨라" → 결과적으로 그것만 빠짐
+       부호: 찾을 땐 === (find) / 남길 땐 !== (filter)
+       map은 길이 그대로 / filter는 길이가 줄 수 있음
+
+   · ⭐️ 지울 땐 누군지(id)만 알면 된다 — 받는 인자 크기 = 필요한 정보의 양
+       addItem 객체 통째로 / removeItem 문자열 하나
+       addItem·removeItem = store의 "공개 버튼" (바꾸는 경로를 한 곳으로)
    · find = 확인(객체 or undefined) / map = 실제작업(같은 길이 새 배열)
    · map은 추가 불가 → 없으면 [...items, 새 객체]
    · if(existing): 객체는 무조건 참, undefined는 거짓
