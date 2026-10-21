@@ -104,7 +104,25 @@ export const useCartStore = create<CartStore>()(
                 }
                 }
             ),
- removeItem:
+        removeItem: (id) =>
+            set((state) =>
+                items: state.items.filter((i) =>
+                    i.id !== item.id
+                )
+        ),
+        quantityUpdate: (id, quantity) =>
+            set((state) =>
+                items: quantity === 0 ?
+                    state.items.filter((i) =>
+                        i.id !== item.id
+                    :
+                    state.items.map((i) =>
+                        i.id === item.id ? {...i, quantity} : i
+                    )
+// quantity가 0이 아니면...?
+                )
+            ),
+            clearCart: () => set({ items: [] }),
     }))
 
 )
