@@ -175,3 +175,4 @@ import { create } from 'zustand'                  // cartStore는 위쪽 아무�
 5. import 사슬이 순서를 정함: page→useCart→cartStore. "import하는 대상"이 바로 옆.
 6. 🎨 cva로 Button 추상화한 것과 같은 원리 — 디자인의 추상화·단일책임을 데이터 흐름에 적용.
 7. **제공(훅·store: useProduct·cartStore·useCart) vs 소비(화면: page·CartDrawer)** — CartDrawer는 훅이 아니라 화면(소비자), page와 같은 식구. 둘 다 useCart를 거쳐 씀.
+8. **"기술적으로 되는 것" ≠ "구조적으로 좋은 것"** (2026-10-21 본인 정리) — page에서 cartStore를 직접 import해도 **기술적으론 돌아감.** 그래도 useCart 창구를 쓰는 이유 = 유지보수(변경 한 곳) + 가독성(page 간결) + 계산식을 cartStore에 따로 정리 + 일관성(모두 한 창구로 접근 → 바꾸는 경로 하나라 추적 쉬움). 엔지니어링 사고 = 되는 것 말고 좋은 것을 고르는 것.
