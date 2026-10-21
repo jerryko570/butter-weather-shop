@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// 상품 1개의 모양
 interface CartItem {
   id: string
   slug: string
@@ -11,6 +12,7 @@ interface CartItem {
   quantity: number
 }
 
+// 스토어 전체의 모양
 interface CartStore {
   items: CartItem[]
   isOpen: boolean
