@@ -14,6 +14,7 @@ type textProps = {
 
 export default function Text({
   as = 'p',
+  variant,
   children,
   className,
   ...rest
@@ -21,7 +22,7 @@ export default function Text({
   const Tag = as as React.ElementType
 
   return (
-    <Tag className={cn(textVariant({ as }), className)} {...rest}>
+    <Tag className={cn(textVariant({ as, variant }), className)} {...rest}>
       {children}
     </Tag>
   )
