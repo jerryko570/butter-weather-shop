@@ -56,4 +56,58 @@ export function useCart() {
         clearCart: store.clearCart
     }
 }
+
+// 4. cartStore.ts 클라이언트 데이터 훅 (zustand)
+import { persist } from ''
+import { create } from ''
+
+
+interface CartItem {
+    id: string
+    slug: string
+    name: string
+    price_krw: number
+    price_usd: number
+    image: string
+    quantity: number
+}
+
+interface CartStore {
+    items: CartItem[]
+    isOpen: boolean
+    addItem: (item: Omit <CartItem, 'quantity'> => void)
+    removeItem: (id: string => void)
+    updateItem: (id: string, quantity: number => void)
+}
+
+
+export const useCartStore = create<CartStore>()(
+    persist((set,get) => ({
+        items:[],
+        isOpen: false,
+        addItem: (item) =>
+            set((state) => {
+                const existing = state.items.find((i) =>
+                    i.id === item.id)
+
+                if (existing) {
+                    return {
+                        items: state.items.map((i) =>
+                            i.id === item.id ? {
+                                ...i, quantity: i.quantity + 1
+                            } : i
+                        )
+                    }
+                }
+                return {
+                    items: [...state.items, {...item, quantity: 1}]
+                }
+                }
+            ),
+ removeItem:
+    }))
+
+)
+
+
 ```

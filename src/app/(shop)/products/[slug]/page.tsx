@@ -24,6 +24,7 @@ export default function ProductDetailPage() {
   const purchase = usePurchase()
   const payment = usePayment()
   const { addItem, openCart } = useCart()
+  //.     ======= 계산 결과가 아닌 도구를 받고 누름
 
   const [quantity, setQuantity] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
