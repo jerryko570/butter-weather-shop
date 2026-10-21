@@ -17,6 +17,7 @@ export function CartDrawer() {
     items,
     isOpen,
     closeCart,
+    clearCart,
     removeItem,
     updateQuantity,
     totalKrw,
@@ -29,7 +30,7 @@ export function CartDrawer() {
       <div
         onClick={closeCart}
         aria-hidden
-        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${
+        className={`fixed inset-0 z-40 cursor-pointer bg-black/30 transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
       />
@@ -44,7 +45,7 @@ export function CartDrawer() {
         <div className="flex items-center justify-between border-b border-[#e5e5e5] px-6 py-5">
           <Text
             as="span"
-            className="text-[12px] tracking-widest text-[#111] uppercase"
+            className="text-[14px] tracking-widest text-[#111] uppercase"
           >
             Cart ({totalCount})
           </Text>
@@ -52,7 +53,7 @@ export function CartDrawer() {
             type="button"
             onClick={closeCart}
             aria-label="닫기"
-            className="text-[18px] leading-none text-[#aaa] transition-colors hover:text-[#111]"
+            className="cursor-pointer text-[24px] leading-none text-[#aaa] transition-colors hover:text-[#111]"
           >
             ×
           </button>
@@ -62,7 +63,7 @@ export function CartDrawer() {
         {items.length === 0 ? (
           <div className="flex flex-1 items-center justify-center">
             <Text as="span" className="text-[13px] text-[#aaa]">
-              장바구니가 비어있습니다
+              장바구니가 비어있어요.
             </Text>
           </div>
         ) : (
@@ -112,13 +113,13 @@ export function CartDrawer() {
                         onClick={() =>
                           updateQuantity(item.id, item.quantity - 1)
                         }
-                        className="flex h-7 w-7 items-center justify-center text-[#555] transition-colors hover:text-[#111]"
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center text-[#555] transition-colors hover:text-[#111]"
                       >
                         −
                       </button>
                       <Text
                         as="span"
-                        className="w-7 text-center text-[12px] text-[#111]"
+                        className="w-7 text-center text-[14px] text-[#111]"
                       >
                         {item.quantity}
                       </Text>
@@ -127,7 +128,7 @@ export function CartDrawer() {
                         onClick={() =>
                           updateQuantity(item.id, item.quantity + 1)
                         }
-                        className="flex h-7 w-7 items-center justify-center text-[#555] transition-colors hover:text-[#111]"
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center text-[#555] transition-colors hover:text-[#111]"
                       >
                         +
                       </button>
@@ -164,9 +165,17 @@ export function CartDrawer() {
             {/* TODO: 체크아웃 페이지 연결 (지금은 미배선) */}
             <button
               type="button"
-              className="w-full bg-[#111] py-3.5 text-[11px] tracking-widest text-white uppercase transition-colors hover:bg-[#333]"
+              className="w-full cursor-pointer bg-[#111] py-3.5 text-[12px] tracking-widest text-white uppercase transition-colors hover:bg-[#333]"
             >
-              Checkout
+              주문하기
+            </button>
+            {/* 장바구니 전체 비우기 — clearCart() 호출 */}
+            <button
+              type="button"
+              onClick={clearCart}
+              className="mt-2 w-full cursor-pointer py-3 text-[12px] tracking-widest text-[#aaa] uppercase transition-colors hover:text-[#111]"
+            >
+              상품 전체 삭제
             </button>
           </div>
         )}
