@@ -11,8 +11,15 @@ export const textVariant = cva('', {
       p: 'text-sm font-normal', // 16px
       span: 'text-xs font-normal', // 14px
     },
+    // 의미 variant — "라벨" 타이포(대문자 + 넓은 자간).
+    // 크기·색은 쓰는 쪽에서 className으로 조절 (CART 14px / TOTAL 11px 등).
+    variant: {
+      default: '',
+      label: 'tracking-label uppercase',
+    },
   },
   defaultVariants: {
     as: 'p',
+    variant: 'default',
   },
 })
