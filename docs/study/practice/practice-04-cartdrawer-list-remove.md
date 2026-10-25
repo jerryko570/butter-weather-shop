@@ -1,8 +1,10 @@
 ```ts
-// 🟢. supabase에서 purchase DB 체크하고 타입으로 정의한다.
+// 자ㅡ 나는 이제 결제하기 버튼을 누르면 supabase에 저장되어 있는 purchase 테이블에서 필요한 데이터만 가지고 올거야. 그 전에 데이터 타입먼저 구성할거야
 
+// 내가 구매하는 과정을 status 3단계로 나눠서 타입 덩어리로 지정했어
 export type PurchaseStatus = 'pending' | 'paid' | 'cancelled'
 
+// purchase 테이블 데이터들 모두 타입으로 지정함
 export interface Purchase {
   id: string
   product_id: string
@@ -19,51 +21,23 @@ export interface Purchase {
   payment_id: string
 }
 
+// Omit을 활용해서 서버에서 받는 데이터를 사용자가 입력할 때 제외한다
 export type CreatePurchaseInput = Omit<
   Purchase,
   | 'id'
   | 'created_at'
+  | 'buyer_phone'
+  | 'buyer_name'
+  | 'buyer_address'
   | 'status'
   | 'payment_id'
-  | 'buyer_name'
-  | 'buyer_phone'
-  | 'buyer_address'
 >
 
-import { usePurchase } from '@/hooks/usePurchase'
-import { usePayment } from '@/hooks/usePayment'
-import { useProduct } from '@/lib/queries/useProducts'
+// usePurchase.ts
+import { useMutation } from '@tanstack/react-query'
+import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
-export default function Page() {
-  const purchase = usePurchase()
-  const payment = usePayment()
-  const { data: product, isLoading, error } = useProduct(slug)
+async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {}
 
-  const handlePurchase = () => {
-    purchase.mutate(
-      {
-        product_id: product.id,
-        product_name: product.name,
-        quantity,
-        price_krw: product.price_krw * quantity,
-        price_usd: product.price_usd ? price_usd * quantity : null,
-      },
-      {
-        onSuccess: (createdPurchase) => {
-          payment.mutate((createdPurchase) => {
-            onSuccess: () => {
-              trackEvent('purchase', {
-                product_id: product.id,
-                product_name: product.name,
-                quantity: product.quantity,
-                price_krw: product.price_krw * quantity,
-              })
-              setShowSuccess()
-            }
-          })
-        },
-      }
-    )
-  }
-}
+// 타입은 완성했고, Page에서
 ```
