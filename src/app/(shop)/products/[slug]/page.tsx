@@ -72,6 +72,9 @@ export default function ProductDetailPage() {
       },
       {
         onSuccess: (createdPurchase) => {
+          // 체인구조: mutate(데이터, {onSuccess})
+          // 앞이 성공해야 다음이 도는 순서 체인
+          // — trackEvent 먼저, 그다음 setShowSuccess.
           payment.mutate(createdPurchase, {
             onSuccess: () => {
               trackEvent('purchase', {
