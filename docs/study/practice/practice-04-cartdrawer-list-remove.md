@@ -37,7 +37,19 @@ export type CreatePurchaseInput = Omit<
 import { useMutation } from '@tanstack/react-query'
 import type { CreatePurchaseInput, Purchase } from '@/types/purchase'
 
-async function postPurchase(input: CreatePurchaseInput): Promise<Purchase> {}
+async function postPurchase(input: CreatePurchaseInput) : Promise<Input> {
+    const res = fetch('/api/purchase', {
+        method: 'POST',
+        headers: {'Content-Type','application/json'},
+        body: JSON.stringify(input)
+    })
 
+    if (!res.ok) {
+        const { error } = await res.json()
+        throw new Error(error?? '주문실패')
+    }
+
+    return res.json()
+}
 // 타입은 완성했고, Page에서
 ```
