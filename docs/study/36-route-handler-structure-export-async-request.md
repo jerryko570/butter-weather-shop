@@ -35,6 +35,24 @@ export async function POST(request: Request) {
 - 핵심: **직접 DB 저장 안 하고 service(createPurchase)에 위임.** (route=접수/service=주방)
 - 2차 검증(`if !body...`) = 프론트 말 안 믿고 서버가 재확인(노트 30).
 
+### ⭐ try / catch — "실패할 수 있는 일"에 치는 안전망 🕸️
+
+```ts
+try {
+  const body = await request.json()           // 파싱 실패 가능
+  const purchase = await createPurchase(body)  // DB 실패 가능
+  return 201
+} catch (error) {
+  return 500   // 위에서 뭐가 터지든 여기서 잡아 500
+}
+```
+
+- `try` = 시도(터질 수 있는 코드) / `catch` = 터지면 **잡아서** 처리. try 안에서 에러(throw)가 나면 멈추지 않고 catch로 점프.
+- **주로 쓰는 곳 = "내 통제 밖, 실패 가능한 일"**: 네트워크(fetch)·DB(supabase)·JSON 파싱(request.json)·외부 API(결제)·파일. (안 터질 수도 있지만 터지면 대비해야 하는 것)
+- **왜**: 에러가 그냥 터지면 서버가 멈출 수 있음 → catch로 잡아 "**터져도 500 응답 주고 계속 돌게**"(서버 안 죽음). 서버에선 특히 필수.
+- **throw(던지기) ↔ catch(잡기) 짝**: postPurchase는 `throw`만("받는 쪽이 처리해", React Query가 받음) / route.ts는 `try/catch`로 **직접 잡아 500 응답**.
+- 🎪 외줄(try, 위험한 일)+안전망(catch, 떨어지면 받음). 안 깔면 추락=크래시.
+
 ---
 
 ## 2. ⭐ `export` 유무 — "밖에서 쓰면 export"
