@@ -93,6 +93,23 @@ Promise < Purchase >
 
 ---
 
+## 6. ⭐ 매개변수 타입 — 추론되면 생략 / 못하면 지정 (strict 모드)
+
+> "매개변수에 타입 항상 지정?" → **아니.** TS가 **추론할 근거가 있으면 생략**, **없으면 지정.**
+
+| | 예 | 지정? | 왜 |
+| --- | --- | --- | --- |
+| **독립 함수**(콜백 아님, 직접 선언) | `postPurchase(input: CreatePurchaseInput)`·`POST(request: Request)` | ✅ 지정 | 혼자 정의라 TS가 알 근거 없음 |
+| **콜백**(남의 함수에 넘김) | `(createdPurchase)=>`·`(i)=>`·`(state)=>` | ❌ 생략 | 감싼 함수(useMutation·map·set)가 맥락을 줘 **추론** |
+
+- **독립 함수** = 내 줄임말 = "콜백이 아니라 직접 선언한 함수"(`function f(){}`·`const f=()=>{}`). 맥락이 없어 매개변수 타입을 명시.
+- **콜백** = onSuccess·map·set 콜백. TS가 맥락에서 타입 추론 → 안 써도 됨. (너도 input·request는 쓰고 onSuccess·map은 안 썼음)
+- **strict 모드** = tsconfig의 `"strict": true`. 그중 `noImplicitAny` = "타입 안 쓰면 암묵적 `any` 되는 걸 금지(에러)". → 독립 함수 매개변수 타입 안 쓰면 **에러**라 사실상 지정 필수. 대부분 프로젝트 켜둠.
+- `any`가 나쁜 이유 = "타입 체크 끄기" → 오타·실수 안 잡힘 → TS 의미 사라짐. strict가 그걸 막음.
+- 🔍 판별: "이 함수 혼자 봤을 때 매개변수가 뭔지 알 수 있나?" → 모르면 지정(독립 함수) / 맥락이 알려주면 생략(콜백).
+
+---
+
 ## 한 줄 정리 모음
 
 1. 타입은 정의만으론 X, 흐름 자리(매개변수·리턴·변수)에 붙여야(적용) 의미. 한 번 정의 → page~service 공유 계약.
@@ -101,3 +118,4 @@ Promise < Purchase >
 4. 제네릭=`< >`에 타입 인자(함수 `( )`=값 인자). Promise/Array/useState/Omit/create 다 제네릭. 재사용 목적.
 5. `< >`타입은 실행 땐 사라짐(TS 체크용) / `( )`값은 실행에 들어감.
 6. 타이핑: `state`→`status`, `Omit<Purchase>`(따옴표X), buyer_name도 Omit, 결제=쓰기(저장).
+7. 매개변수 타입: 추론되면 생략(콜백 onSuccess·map·set), 못하면 지정(독립함수 postPurchase·POST). strict 모드(noImplicitAny)라 독립함수는 사실상 지정 필수(안 쓰면 any 에러).
