@@ -87,6 +87,25 @@ export async function POST(request: Request) { ... }
   - `NextResponse.json(...)` = 내가 만들어 **return하는 응답**.
   - postPurchase의 `res`(응답 받은 봉투)와 route의 `request`(들어온 요청)는 **방향 반대**.
 
+### ⭐ `request`(소문자 이름) vs `Request`(대문자 타입)
+
+```ts
+POST(request: Request)
+     └──┬──┘  └──┬──┘
+   이름(내가 정함)  타입(고정, 내장)
+```
+
+- `request`(소문자) = **매개변수 이름**(개발자가 정함, `req`도 OK).
+- `Request`(대문자) = **타입** = **웹 표준 "내장 타입"**(HTTP 요청의 모양). 우리가 만든 `Purchase` 같은 커스텀 아님 — 브라우저·런타임이 기본 제공.
+- **Request가 가진 것** → 그래서 `request.json()`이 됨:
+  - `request.json()` — body를 객체로 꺼내기
+  - `request.headers` — 헤더
+  - `request.method` — 'POST' 등
+  - `request.url` — 주소
+- **내장 타입 vs 커스텀 타입**: 내장=`Request`·`Promise`·`Array`·`string`(기본 제공) / 커스텀=`Purchase`·`CreatePurchaseInput`(우리가 정의).
+- 📌 관례: **타입은 대문자 시작**(`Request`·`Purchase`·`Promise`) / **변수·매개변수는 소문자**(`request`·`body`). → `request: Request` = "소문자 변수 : 대문자 타입".
+- 이 `Request`는 fetch가 보낼 때 쓰는 것과 **같은 웹 표준 Request** — 보내는 쪽·받는 쪽 공통.
+
 ---
 
 ## 6. 타이핑 함정 (usePurchase·타입)
