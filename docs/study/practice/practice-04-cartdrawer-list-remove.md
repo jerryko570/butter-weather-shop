@@ -1,7 +1,7 @@
 ```ts
-// supabase DB table -> purchase의 아이템을 타입으로 구조화 한다.
+// 🟢 purchase 테이블 DB를 타입 모양으로 정의한다.
 
-export type PurchaseStatus = 'pending' | 'paid' | 'cancelled'
+export type StatusPurchase = 'pending' | 'paid' | 'cancelled'
 
 export interface Purchase {
   id: string
@@ -15,40 +15,20 @@ export interface Purchase {
   price_usd: number | null
   buyer_phone: string
   buyer_address: string
-  status: PurchaseStatus
+  status: StatusPurchase
   payment_id: string
 }
 
-export type CreateInputPurchase = Omit<
+export type CreatePurchaseInput = Omit<
   Purchase,
-  'id' | 'created_at' | 'buyer_phone' | 'buyer_address' | 'payment_id'
+  | 'product_id'
+  | 'created_at'
+  | 'buyer_phone'
+  | 'buyer_address'
+  | 'status'
+  | 'payment_id'
+  | 'product_id'
 >
 
-// hooks/usePurchase.ts (API 커스텀 훅)
-import { useMutaion } from '@tanstack/react-query'
-import { CreatePurchase, Purchase } from '@/types/purchase'
-
-async function postPurchase(input: CreateInputPurchase): Promise<Purchase> {
-  const res = await fetch('/api/purchase', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
-
-  if(!res.ok) {
-    const { error } = await res.json()
-    throw new Error(error ?? '주문실풰')
-  }
-
-  return res.json()
-}
-
-
-export const usePurchase = {
-  return {
-    useMutation({
-      mutationFn: postPurchase
-    })
-  }
-}
+// 🟢
 ```
