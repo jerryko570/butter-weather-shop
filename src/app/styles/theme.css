@@ -84,4 +84,17 @@
   --color-gray-800: var(--gray-800);
   --color-gray-900: var(--gray-900);
   --color-gray-950: var(--gray-950);
+
+  /* 타이포 — 폰트 패밀리 (→ font-sans / font-display 유틸 생성)
+     ⚠️ Pretendard(국문)·Inter(영문)는 아직 next/font로 로드 전이라
+     지금은 시스템 폰트로 폴백된다. 나중에 layout.tsx에서 next/font로
+     불러와 연결하면 바로 적용됨. */
+  --font-sans:
+    'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+    'Apple SD Gothic Neo', sans-serif;
+  --font-display:
+    'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* 자간 — 라벨용 넓은 자간 (→ tracking-label 유틸 생성) */
+  --tracking-label: 0.15em;
 }

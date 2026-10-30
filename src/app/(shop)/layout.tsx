@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Footer } from '@/components/layout/Footer'
 import { AccountNav } from '@/components/auth/AccountNav'
 import { CartButton } from '@/components/layout/CartButton'
+import { CartDrawer } from '@/components/layout/CartDrawer'
 
 // 손님용 쇼핑몰 레이아웃 (nutats 구조) —
 // 데스크톱: 좌측 세로 사이드바 + 우측 콘텐츠
@@ -31,6 +32,9 @@ export default function ShopLayout({
         <main className="flex-1">{children}</main>
         <Footer />
       </div>
+
+      {/* 장바구니 서랍 — 전역 오버레이 (isOpen일 때 오른쪽에서 슬라이드) */}
+      <CartDrawer />
     </div>
   )
 }
